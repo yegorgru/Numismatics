@@ -1,0 +1,57 @@
+from tkinter import *
+
+from Connection import *
+from EntryWithPlaceholder import *
+
+
+class Registration(Frame):
+    def register(self):
+        register_code = connection.create_user(
+            self.username_entry.get(), self.email_entry.get(), self.password_entry.get()
+        )
+        print(register_code)
+
+    def load(self):
+        print("Register page loaded")
+
+    def __init__(self, parent, controller):
+        Frame.__init__(self, parent, bg="white")
+        self.controller = controller
+
+        self.img = PhotoImage(file='assets/login.png')
+        Label(self, image=self.img, bg='white').place(x=50, y=50)
+
+        frame = Frame(self, width=350, height=350, bg="white")
+        frame.place(x=480, y=70)
+
+        heading = Label(frame, text='Register', fg='#57a1f8', bg='white', font=('Microsoft YaHei UI Light', 23, 'bold'))
+        heading.place(x=100, y=5)
+
+        self.username_entry = EntryWithPlaceholder(frame, "username")
+        self.username_entry.place(x=30, y=60)
+        Frame(frame, width=295, height=2, bg='black').place(x=25, y=87)
+
+        self.email_entry = EntryWithPlaceholder(frame, "email")
+        self.email_entry.place(x=30, y=120)
+        Frame(frame, width=295, height=2, bg='black').place(x=25, y=147)
+
+        self.password_entry = EntryWithPlaceholder(frame, "password", True)
+        self.password_entry.place(x=30, y=180)
+        Frame(frame, width=295, height=2, bg='black').place(x=25, y=207)
+
+        self.register_btn = Button(
+            frame, width=30, pady=7, text='Register', bg='#57a1f8', fg='white', border=0,
+            font=('Microsoft YaHei UI Light', 11), command=lambda: self.register()
+        )
+        self.register_btn.place(x=33, y=234)
+        self.label = Label(
+            frame, text="Already have an account?", fg='black', bg='white',
+            font=('Microsoft YaHei UI Light', 9)
+        )
+        self.label.place(x=75, y=300)
+
+        self.register_btn = Button(
+            frame, width=5, text="Login", border=0, bg='white', cursor='hand2', fg='#57a1f8',
+            command=lambda: controller.show_frame("Login")
+        )
+        self.register_btn.place(x=225, y=300)

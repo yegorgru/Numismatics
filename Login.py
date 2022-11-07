@@ -33,25 +33,25 @@ class Login(Frame):
 
         self.user_entry = EntryWithPlaceholder(frame, "username / email")
         self.user_entry.place(x=30, y=80)
-        Frame(frame, width=295, height=2, bg='black').place(x=25, y=107)
+        Frame(frame, width=315, height=2, bg='black').place(x=25, y=107)
 
         self.password_entry = EntryWithPlaceholder(frame, "password", True)
         self.password_entry.place(x=30, y=140)
-        Frame(frame, width=295, height=2, bg='black').place(x=25, y=167)
+        Frame(frame, width=315, height=2, bg='black').place(x=25, y=167)
 
-        self.sign_in_btn = Button(
+        self.login_btn = Button(
             frame, width=30, pady=7, text='Login', bg='#57a1f8', fg='white', border=0,
             font=('Microsoft YaHei UI Light', 11), command=lambda: self.login()
         )
-        self.sign_in_btn.place(x=33, y=194)
+        self.login_btn.place(x=33, y=194)
         self.label = Label(
             frame, text="Don't have an account?", fg='black', bg='white',
             font=('Microsoft YaHei UI Light', 9)
         )
-        self.label.place(x=75, y=260)
+        self.label.place(x=60, y=260)
 
         self.register_btn = Button(
             frame, width=8, text="Register", border=0, bg='white', cursor='hand2', fg='#57a1f8',
             command=lambda: controller.show_frame("Registration")
         )
-        self.register_btn.place(x=215, y=260)
+        self.register_btn.place(x=225, y=260)

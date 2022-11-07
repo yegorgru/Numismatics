@@ -1,4 +1,4 @@
-from tkinter import Entry
+from tkinter import *
 
 
 class EntryWithPlaceholder(Entry):
@@ -21,9 +21,15 @@ class EntryWithPlaceholder(Entry):
     def has_input(self):
         return self['fg'] == self.default_fg_color
 
-    def __init__(self, parent=None, placeholder="PLACEHOLDER", secret=False):
+    def check(self, *args):
+        if len(self.get()) <= self.max_len:
+            self.old_value = self.get()
+        else:
+            self.var.set(self.old_value)
+
+    def __init__(self, parent=None, placeholder="PLACEHOLDER", secret=False, width=20):
         self.secret = secret
-        Entry.__init__(self, parent, width=20, fg='black', border=0, bg='white', font=('Microsoft YaHei UI Light', 11))
+        Entry.__init__(self, parent, width=width, fg='black', border=0, bg='white', font=('Microsoft YaHei UI Light', 11))
         if secret:
             self.configure(show="*")
         self.placeholder = placeholder
@@ -33,4 +39,10 @@ class EntryWithPlaceholder(Entry):
         self.bind("<FocusIn>", self.foc_in)
         self.bind("<FocusOut>", self.foc_out)
 
+        self.var = StringVar()
+        self.max_len = width
+        self.configure(textvariable=self.var)
+        self.var.trace('w', self.check)
+
         self.put_placeholder()
+        self.old_value = self.get()

@@ -42,19 +42,35 @@ class Connection:
             return self.CreateUserCode.PASSWORD_LENGTH
         if len(email) > 20:
             return self.CreateUserCode.EMAIL_LENGTH
-        rs = self.cursor.execute('SELECT COUNT(*) from consumer where name = :1', username).fetchone()
+        rs = self.cursor.execute('SELECT COUNT(*) from consumer where name = :username', (username, )).fetchone()
         if rs[0] == 1:
             return self.CreateUserCode.NAME_TAKEN
         if not verify_email(email):
             return self.CreateUserCode.EMAIL_INCORRECT
-        rs = self.cursor.execute('SELECT COUNT(*) from consumer where email = :1', email).fetchone()
+        rs = self.cursor.execute('SELECT COUNT(*) from consumer where email = :email', (email, )).fetchone()
         if rs[0] == 1:
             return self.CreateUserCode.EMAIL_TAKEN
         self.cursor.execute(
-            "insert into consumer (name, password, is_admin, email) values (:name, :password, 0, :email);",
+            "insert into consumer (name, password, is_admin, email) values (:name, :password, 0, :email)",
             (username, password, email)
         )
         return self.CreateUserCode.SUCCESS
 
+    def get_collections(self, username):
+        return self.cursor.execute("""
+            SELECT coll.name, coll.image
+            from collection coll
+            inner join consumer c
+            on c.consumer_id = coll.consumer_id
+            where c.name = :username
+        """, (username, ))
+
+    def create_collection(self, username, collection_name, description):
+        self.cursor.execute('''
+            insert into collection (name, consumer_id, description) 
+                values (:collection_name, (select c.consumer_id from consumer c where c.name = :username), :description)
+            ''', (collection_name, username, description)
+        )
+        self.connection.commit()
 
 connection = Connection()

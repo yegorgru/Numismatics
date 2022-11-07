@@ -1,4 +1,6 @@
 from tkinter import *
+import ctypes
+ctypes.windll.shcore.SetProcessDpiAwareness(2)  # for correct work on Windows with different display settings
 
 from Registration import *
 from Login import *

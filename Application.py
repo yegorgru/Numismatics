@@ -1,10 +1,11 @@
 from tkinter import *
 import ctypes
-ctypes.windll.shcore.SetProcessDpiAwareness(2)  # for correct work on Windows with different display settings
 
-from Registration import *
-from Login import *
-from HomePage import *
+from PageRegistration import PageRegistration
+from PageLogin import PageLogin
+from PageHome import PageHome
+
+ctypes.windll.shcore.SetProcessDpiAwareness(2)  # for correct work on Windows with different display settings
 
 
 class Application(Tk):
@@ -24,13 +25,13 @@ class Application(Tk):
         self.resizable(False, False)
 
         self.frames = {}
-        for F in (Login, Registration, HomePage):
+        for F in (PageLogin, PageRegistration, PageHome):
             page_name = F.__name__
             frame = F(parent=container, controller=self)
             self.frames[page_name] = frame
             frame.grid(row=0, column=0, sticky="nsew")
 
-        self.show_frame("Login")
+        self.show_frame("PageLogin")
 
     def show_frame(self, page_name):
         frame = self.frames[page_name]

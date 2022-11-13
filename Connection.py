@@ -63,14 +63,19 @@ class Connection:
             inner join consumer c
             on c.consumer_id = coll.consumer_id
             where c.name = :username
+                and not c.name = 'General'
+            order by coll.name
         """, (username, ))
 
-    def create_collection(self, username, collection_name, description):
+    def create_collection(self, username, collection_name, description, image):
         self.cursor.execute('''
-            insert into collection (name, consumer_id, description) 
-                values (:collection_name, (select c.consumer_id from consumer c where c.name = :username), :description)
-            ''', (collection_name, username, description)
+            insert into collection (name, consumer_id, description, image) 
+            values (
+                :collection_name, (select c.consumer_id from consumer c where c.name = :username), :description, :image
+            )
+            ''', (collection_name, username, description, image)
         )
         self.connection.commit()
+
 
 connection = Connection()

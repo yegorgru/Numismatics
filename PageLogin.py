@@ -1,17 +1,16 @@
-from tkinter import *
-
 from Connection import *
-from EntryWithPlaceholder import *
+from GUI.EntryWithPlaceholder import *
 
+from Definitions import *
 
-class Login(Frame):
+class PageLogin(Frame):
     def login(self):
         user = self.user_entry.get()
         password = self.password_entry.get()
         login_result = connection.user_exist(user, password)
         if login_result[0]:
             self.controller.username = login_result[1]
-            self.controller.show_frame("HomePage")
+            self.controller.show_frame("PageHome")
         else:
             print("Fail")
 
@@ -22,7 +21,7 @@ class Login(Frame):
         Frame.__init__(self, parent, bg="white")
         self.controller = controller
 
-        self.img = PhotoImage(file='assets/login.png')
+        self.img = PhotoImage(file=PATH_IMAGE_LOGIN)
         Label(self, image=self.img, bg='white').place(x=50, y=50)
 
         frame = Frame(self, width=350, height=350, bg="white")
@@ -52,6 +51,6 @@ class Login(Frame):
 
         self.register_btn = Button(
             frame, width=8, text="Register", border=0, bg='white', cursor='hand2', fg='#57a1f8',
-            command=lambda: controller.show_frame("Registration")
+            command=lambda: controller.show_frame("PageRegistration")
         )
         self.register_btn.place(x=225, y=260)

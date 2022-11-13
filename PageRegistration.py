@@ -1,10 +1,10 @@
-from tkinter import *
-
 from Connection import *
-from EntryWithPlaceholder import *
+from GUI.EntryWithPlaceholder import *
+
+from Definitions import *
 
 
-class Registration(Frame):
+class PageRegistration(Frame):
     def register(self):
         register_code = connection.create_user(
             self.username_entry.get(), self.email_entry.get(), self.password_entry.get()
@@ -18,7 +18,7 @@ class Registration(Frame):
         Frame.__init__(self, parent, bg="white")
         self.controller = controller
 
-        self.img = PhotoImage(file='assets/login.png')
+        self.img = PhotoImage(file=PATH_IMAGE_LOGIN)
         Label(self, image=self.img, bg='white').place(x=50, y=50)
 
         frame = Frame(self, width=350, height=350, bg="white")
@@ -52,6 +52,6 @@ class Registration(Frame):
 
         self.login_btn = Button(
             frame, width=5, text="Login", border=0, bg='white', cursor='hand2', fg='#57a1f8',
-            command=lambda: controller.show_frame("Login")
+            command=lambda: controller.show_frame("PageLogin")
         )
         self.login_btn.place(x=230, y=310)

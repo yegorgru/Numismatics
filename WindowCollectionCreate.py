@@ -1,16 +1,35 @@
 from tkinter import *
 from PIL import Image, ImageTk
+import io
+import os
 
-from EntryWithPlaceholder import EntryWithPlaceholder
-from TextWithPlaceholder import TextWithPlaceholder
+from GUI.EntryWithPlaceholder import EntryWithPlaceholder
+from GUI.TextWithPlaceholder import TextWithPlaceholder
 from Connection import *
+from GUI.Utils import *
+from Definitions import *
 
 
-class CreateCollectionWindow(Toplevel):
+class WindowCollectionCreate(Toplevel):
     def create(self):
-        connection.create_collection(self.username, self.name_entry.get(), self.description.get_text())
+        connection.create_collection(
+            self.username, self.name_entry.get(), self.description.get_text(), self.image_value
+        )
         self.controller.load_collections()
         self.destroy()
+
+    def set_image(self, e):
+        file = open_image()
+        if not file:
+            return
+        img = Image.open(file)
+        img = img.resize((400, 400), Image.ANTIALIAS)
+        self.image = ImageTk.PhotoImage(img)
+        self.collection_image.configure(image=self.image)
+        file = open(file, 'rb')
+        file = io.BytesIO(file.read())
+        file.seek(0, os.SEEK_END)
+        self.image_value = file.getvalue()
 
     def __init__(self, controller):
         Toplevel.__init__(self)
@@ -22,11 +41,12 @@ class CreateCollectionWindow(Toplevel):
         self.resizable(False, False)
         self.configure(bg="white")
 
-        img = Image.open("assets/empty_image.png")
+        img = Image.open(PATH_IMAGE_EMPTY)
         img = img.resize((400, 400), Image.ANTIALIAS)
-        self.profile_image = ImageTk.PhotoImage(img)
-        self.collection_image = Label(self, image=self.profile_image, bg='white', borderwidth=0)
+        self.image = ImageTk.PhotoImage(img)
+        self.collection_image = Label(self, image=self.image, bg='white', borderwidth=0)
         self.collection_image.grid(row=0, column=1, sticky="w", pady=(20, 20))
+        self.image_value = None
 
         self.name_entry = EntryWithPlaceholder(self, "Collection name")
         self.name_entry.grid(row=1, column=1, sticky="w", pady=(20, 0))
@@ -52,6 +72,8 @@ class CreateCollectionWindow(Toplevel):
 
         self.grid_columnconfigure(0, weight=1)
         self.grid_columnconfigure(2, weight=1)
+
+        self.collection_image.bind("<Button-1>", self.set_image)
 
 
 

@@ -49,8 +49,6 @@ class PageHome(Frame):
     def load(self):
         self.username = self.controller.username
         self.profile_name.configure(text=self.username)
-        print(self.controller.winfo_screenwidth())
-        print(self.controller.winfo_screenheight())
         self.controller.geometry("1920x1080+0+0")
         self.controller.state('zoomed')
         self.load_collections()
@@ -59,11 +57,10 @@ class PageHome(Frame):
     def load_collections(self):
         rs = connection.get_collections(self.username)
         collections = [
-            CollectionPreview(self, ("New collection", None), CollectionType.CREATE_NEW),
-            CollectionPreview(self, ("General", None), CollectionType.GENERAL)
+            CollectionPreview(self, ("New collection", None, None), CollectionType.CREATE_NEW)
         ]
         for collection in rs:
-            collections.append(CollectionPreview(self, collection, CollectionType.SIMPLE))
+            collections.append(CollectionPreview(self, collection, CollectionType.COLLECTION))
 
         self.collections = GridManager(
             self, column_count=7, row_width=200, column_width=200, width=1920, height=800, objects=collections
@@ -74,9 +71,9 @@ class PageHome(Frame):
         new_collection_window = WindowCollectionCreate(self)
         new_collection_window.grab_set()
 
-    def load_collection(self, name):
-        new_collection_window = WindowCollectionCreate(self)
-        new_collection_window.grab_set()
+    def load_collection(self, collection_id):
+        self.controller.collection_id = collection_id
+        self.controller.show_frame("PageCollection")
 
 
 

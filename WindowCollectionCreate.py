@@ -6,7 +6,7 @@ import os
 from GUI.EntryWithPlaceholder import EntryWithPlaceholder
 from GUI.TextWithPlaceholder import TextWithPlaceholder
 from Connection import *
-from GUI.Utils import *
+from Utils import *
 from Definitions import *
 
 

@@ -58,13 +58,17 @@ class Connection:
 
     def get_collections(self, username):
         return self.cursor.execute("""
-            SELECT coll.name, coll.image
+            SELECT coll.name, coll.image, coll.collection_id
             from collection coll
             inner join consumer c
             on c.consumer_id = coll.consumer_id
             where c.name = :username
-                and not c.name = 'General'
-            order by coll.name
+            order by
+                (CASE coll.name
+                    WHEN 'General' THEN 2
+                    ELSE 1
+                END) DESC,
+            coll.name DESC
         """, (username, ))
 
     def create_collection(self, username, collection_name, description, image):
@@ -76,6 +80,37 @@ class Connection:
             ''', (collection_name, username, description, image)
         )
         self.connection.commit()
+
+    def get_collection_info(self, collection_id):
+        return self.cursor.execute("""
+                    SELECT name, description, image
+                    from collection
+                    where collection_id = :collection_id
+                """, (collection_id,)).fetchone()
+
+    def get_coins(self, collection_id):
+        return self.cursor.execute("""
+            SELECT coin.coin_id, td.value, currency.name, td.year, td.image
+            from coin
+            inner join collection_coin cc
+                on cc.coin_id = coin.coin_id
+            inner join collection c
+                on c.collection_id = cc.collection_id
+            inner join token_details td
+                on coin.token_details_id = td.token_details_id
+            inner join currency
+                on currency.currency_id = td.currency_id
+            where c.collection_id = :collection_id
+        """, (collection_id,))
+
+    def get_token_types(self):
+        return self.cursor.execute("select type from token_type").fetchall()
+
+    def get_edge_types(self):
+        return self.cursor.execute("select name from edge").fetchall()
+
+    def get_material_names(self):
+        return self.cursor.execute("select name from material").fetchall()
 
 
 connection = Connection()

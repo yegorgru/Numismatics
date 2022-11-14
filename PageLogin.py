@@ -3,6 +3,7 @@ from GUI.EntryWithPlaceholder import *
 
 from Definitions import *
 
+
 class PageLogin(Frame):
     def login(self):
         user = self.user_entry.get()

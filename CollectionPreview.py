@@ -8,18 +8,15 @@ from Definitions import *
 
 class CollectionType(Enum):
     CREATE_NEW = 1,
-    GENERAL = 2,
-    SIMPLE = 3
+    COLLECTION = 2
 
 
 class CollectionPreview:
-    def __init__(self, controller, collection, collection_type=CollectionType.SIMPLE):
+    def __init__(self, controller, collection, collection_type=CollectionType.COLLECTION):
         self.controller = controller
         self.collection_type = collection_type
-        if collection_type == CollectionType.GENERAL:
-            self.image = Image.open(PATH_IMAGE_COLLECTION_GENERAL)
-        elif collection_type == CollectionType.CREATE_NEW:
-            self.image = Image.open(PATH_IMAGE_COLLECTION_CREATE)
+        if collection_type == CollectionType.CREATE_NEW:
+            self.image = Image.open(PATH_IMAGE_CREATE)
         elif collection[1] is None:
             self.image = Image.open(PATH_IMAGE_EMPTY)
         else:
@@ -27,12 +24,13 @@ class CollectionPreview:
             pre_img = io.BytesIO(img)
             self.image = Image.open(pre_img)
         self.text = collection[0]
+        self.id = collection[2]
 
     def click_action(self):
         if self.collection_type == CollectionType.CREATE_NEW:
             self.controller.create_new_collection()
         else:
-            print(self.text, "clicked!")
+            self.controller.load_collection(self.id)
 
 
 

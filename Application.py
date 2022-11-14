@@ -4,6 +4,7 @@ import ctypes
 from PageRegistration import PageRegistration
 from PageLogin import PageLogin
 from PageHome import PageHome
+from PageCollection import PageCollection
 
 ctypes.windll.shcore.SetProcessDpiAwareness(2)  # for correct work on Windows with different display settings
 
@@ -25,7 +26,7 @@ class Application(Tk):
         self.resizable(False, False)
 
         self.frames = {}
-        for F in (PageLogin, PageRegistration, PageHome):
+        for F in (PageLogin, PageRegistration, PageHome, PageCollection):
             page_name = F.__name__
             frame = F(parent=container, controller=self)
             self.frames[page_name] = frame

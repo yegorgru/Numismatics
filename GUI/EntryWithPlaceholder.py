@@ -27,9 +27,9 @@ class EntryWithPlaceholder(Entry):
         else:
             self.var.set(self.old_value)
 
-    def __init__(self, parent=None, placeholder="PLACEHOLDER", secret=False, width=20):
+    def __init__(self, parent=None, placeholder="PLACEHOLDER", secret=False, width=20, bg='white'):
         self.secret = secret
-        Entry.__init__(self, parent, width=width, fg='black', border=0, bg='white', font=('Microsoft YaHei UI Light', 11))
+        Entry.__init__(self, parent, width=width, fg='black', border=0, bg=bg, font=('Microsoft YaHei UI Light', 11))
         if secret:
             self.configure(show="*")
         self.placeholder = placeholder

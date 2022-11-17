@@ -7,6 +7,11 @@ class EntryWithPlaceholder(Entry):
         self['fg'] = self.placeholder_color
         self.configure(show="")
 
+    def set_text(self, text):
+        self.delete('0', 'end')
+        self['fg'] = self.default_fg_color
+        self.insert(0, text)
+
     def foc_in(self, *args):
         if self['fg'] == self.placeholder_color:
             self.delete('0', 'end')

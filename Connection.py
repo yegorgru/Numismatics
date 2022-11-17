@@ -24,7 +24,7 @@ class Connection:
                 rs = self.cursor.execute('SELECT name from consumer where email = :1', user).fetchone()
                 return True, rs[0]
             else:
-                return False
+                return False, None
 
     class CreateUserCode(Enum):
         SUCCESS = 0
@@ -90,7 +90,7 @@ class Connection:
 
     def get_coins(self, collection_id):
         return self.cursor.execute("""
-            SELECT coin.coin_id, td.value, currency.name, td.year, td.image
+            SELECT coin.coin_id, td.value, currency.name, td.year, td.image_obverse
             from coin
             inner join collection_coin cc
                 on cc.coin_id = coin.coin_id
@@ -111,6 +111,78 @@ class Connection:
 
     def get_material_names(self):
         return self.cursor.execute("select name from material").fetchall()
+
+    def get_currencies(self):
+        return self.cursor.execute("select name, country from currency").fetchall()
+
+    def create_token_details(
+            self, value, currency_name, currency_country, year, token_type, material, image_obverse, image_reverse,
+            description, subject
+    ):
+        type_id = self.cursor.execute('''select token_type_id from token_type
+            where type = :type''', (token_type, )).fetchone()[0]
+        material_id = self.cursor.execute('''select material_id from material
+            where name = :name''', (material, )).fetchone()[0]
+        currency_id = self.cursor.execute('''select currency_id from currency
+            where name = :name and country = :country''', (currency_name, currency_country)).fetchone()[0]
+
+        token_details_id = self.cursor.var(cx_Oracle.NUMBER)
+        self.cursor.execute('''
+            insert into token_details (
+                value, currency_id, year, type_id, material_id, image_obverse, image_reverse, description, subject
+            ) 
+            values (
+                :value, :currency_id, :year, :type_id, :material_id, :image_obverse, 
+                :image_reverse, :description, :subject
+            )
+            returning token_details_id into :token_details_id
+            ''', (value, currency_id, year, type_id, material_id, image_obverse, image_reverse, description, subject,
+                  token_details_id)
+        )
+        self.connection.commit()
+        return token_details_id.getvalue()[0]
+
+    def create_coin_details(self, diameter, weight, edge):
+        edge_id = self.cursor.execute('''select edge_id from edge
+            where name = :name''', (edge, )).fetchone()[0]
+
+        coin_details_id = self.cursor.var(cx_Oracle.NUMBER)
+        self.cursor.execute('''
+            insert into coin_details (
+                diameter, weight, edge_id
+            ) 
+            values (
+                :diameter, :weight, :edge_id
+            )
+            returning coin_details_id into :coin_details_id
+            ''', (diameter, weight, edge_id, coin_details_id)
+        )
+        self.connection.commit()
+        return coin_details_id.getvalue()[0]
+
+    def create_coin(self, token_details_id, coin_details_id, collection_id):
+        coin_id = self.cursor.var(cx_Oracle.NUMBER)
+        self.cursor.execute('''
+            insert into coin (
+                token_details_id, coin_details_id
+            ) 
+            values (
+                :token_details_id, :coin_details_id
+            )
+            returning coin_id into :coin_id
+            ''', (token_details_id, coin_details_id, coin_id)
+        )
+        coin_id = coin_id.getvalue()[0]
+        self.cursor.execute('''
+           insert into collection_coin (
+               coin_id, collection_id
+           ) 
+           values (
+               :coin_id, :collection_id
+           )
+           ''', (coin_id, collection_id)
+        )
+        self.connection.commit()
 
 
 connection = Connection()

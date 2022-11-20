@@ -1,7 +1,9 @@
 from Connection import *
-from WindowCollectionCreate import WindowCollectionCreate
+from WindowCollectionCreateEdit import WindowCollectionCreateEdit
 from GUI.GridManager import GridManager
 from CollectionPreview import *
+from WindowMode import WindowMode
+from PIL import Image, ImageTk
 
 
 class PageHome(Frame):
@@ -55,7 +57,7 @@ class PageHome(Frame):
         print("Home Page page loaded")
 
     def load_collections(self):
-        rs = connection.get_collections(self.username)
+        rs = connection.get_collections_preview(self.username)
         collections = [
             CollectionPreview(self, ("New collection", None, None), CollectionType.CREATE_NEW)
         ]
@@ -68,7 +70,7 @@ class PageHome(Frame):
         self.collections.grid(row=2, column=0, sticky='news')
 
     def create_new_collection(self):
-        new_collection_window = WindowCollectionCreate(self)
+        new_collection_window = WindowCollectionCreateEdit(self, WindowMode.CREATE_NEW)
         new_collection_window.grab_set()
 
     def load_collection(self, collection_id):

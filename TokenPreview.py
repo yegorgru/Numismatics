@@ -33,7 +33,7 @@ class TokenPreview:
         if self.token_type == TokenType.CREATE_NEW:
             self.controller.create_new_coin()
         else:
-            print(self.text, "clicked!")
+            self.controller.load_coin(self.id)
 
 
 

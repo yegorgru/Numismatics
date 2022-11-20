@@ -1,8 +1,11 @@
 from Connection import *
-from WindowCoinCreate import WindowCoinCreate
+from WindowCoinCreateEdit import WindowCoinCreateEdit
 from GUI.GridManager import GridManager
 from TokenPreview import *
 import textwrap
+
+from WindowCollectionCreateEdit import WindowCollectionCreateEdit
+from WindowMode import WindowMode
 
 
 class PageCollection(Frame):
@@ -24,7 +27,16 @@ class PageCollection(Frame):
         img2 = (Image.open(PATH_IMAGE_SETTINGS))
         img2 = img2.resize((70, 70), Image.ANTIALIAS)
         self.settings_image = ImageTk.PhotoImage(img2)
-        Label(collection_frame, image=self.settings_image, bg="#57a1f8", borderwidth=0).place(x=1645, y=30)
+        self.settings_img = Label(collection_frame, image=self.settings_image, bg="#57a1f8", borderwidth=0)
+        self.settings_img.place(x=1645, y=30)
+        self.settings_img.bind("<Button-1>", self.edit_collection)
+
+        img3 = (Image.open(PATH_IMAGE_BACK_BUTTON))
+        img3 = img3.resize((100, 100), Image.ANTIALIAS)
+        self.back_image = ImageTk.PhotoImage(img3)
+        self.back_img = Label(collection_frame, image=self.back_image, bg="#57a1f8", borderwidth=0)
+        self.back_img.place(x=1720, y=15)
+        self.back_img.bind("<Button-1>", self.close)
 
         self.collection_name = Label(
             collection_frame, text="", fg='white', bg='#57a1f8',
@@ -56,24 +68,29 @@ class PageCollection(Frame):
         self.coins_manager = None
 
     def load(self):
+        self.load_collection_info()
+        self.load_coins()
+        print("Collection Page page loaded")
+
+    def load_collection_info(self):
         self.collection_id = self.controller.collection_id
-        info = connection.get_collection_info(collection_id=self.collection_id)
+        info = connection.get_collection(collection_id=self.collection_id)
         self.collection_name.configure(text=info[0])
 
         self.collection_description.configure(text=textwrap.fill(info[1], 60))
 
-        img = info[2].read()
-        pre_img = io.BytesIO(img)
-        self.collection_image = Image.open(pre_img)
+        if info[2] is None:
+            self.collection_image = Image.open(PATH_IMAGE_EMPTY)
+        else:
+            img = info[2].read()
+            pre_img = io.BytesIO(img)
+            self.collection_image = Image.open(pre_img)
         self.collection_image = self.collection_image.resize((300, 300), Image.ANTIALIAS)
         self.collection_image = ImageTk.PhotoImage(self.collection_image)
         self.collection_image_label.configure(image=self.collection_image)
 
-        self.load_coins()
-        print("Collection Page page loaded")
-
     def load_coins(self):
-        rs = connection.get_coins(self.collection_id)
+        rs = connection.get_coins_preview(self.collection_id)
         coins = [
             TokenPreview(self, ("New coin", ), TokenType.CREATE_NEW)
         ]
@@ -85,19 +102,22 @@ class PageCollection(Frame):
         )
         self.coins.grid(row=2, column=0, sticky='news')
 
+    def close(self, e):
+        self.controller.show_frame("PageHome")
+
     def load_banknotes(self):
         print("#")
 
     def create_new_coin(self):
-        new_coin_window = WindowCoinCreate(self)
+        new_coin_window = WindowCoinCreateEdit(self, window_mode=WindowMode.CREATE_NEW)
         new_coin_window.grab_set()
 
     def load_coin(self, coin_id):
-        new_coin_window = WindowCoinCreate(self)
-        new_coin_window.grab_set()
+        coin_window = WindowCoinCreateEdit(self, window_mode=WindowMode.VIEW, coin_id=coin_id)
+        coin_window.grab_set()
 
-
-
-
-
+    def edit_collection(self, e):
+        edit_window = WindowCollectionCreateEdit(self, WindowMode.EDIT)
+        edit_window.grab_set()
+        self.load()
 

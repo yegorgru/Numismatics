@@ -1,7 +1,7 @@
 from tkinter import *
 from tkinter import ttk
 from PIL import Image, ImageTk
-import io
+from tkinter.messagebox import askyesno
 import os
 
 from GUI.EntryWithPlaceholder import EntryWithPlaceholder
@@ -9,15 +9,17 @@ from GUI.TextWithPlaceholder import TextWithPlaceholder
 from Connection import *
 from Utils import *
 from Definitions import *
+from WindowMode import WindowMode
 
 
-class WindowCoinCreate(Toplevel):
-    def __init__(self, controller):
+class WindowCoinCreateEdit(Toplevel):
+    def __init__(self, controller, window_mode, coin_id=None):
         Toplevel.__init__(self)
+        self.mode = window_mode
         self.controller = controller
         self.collection_id = controller.collection_id
+        self.coin_id = coin_id
 
-        self.title('New coin')
         self.geometry('1600x800+200+100')
         self.resizable(False, False)
         self.configure(bg="white")
@@ -97,16 +99,6 @@ class WindowCoinCreate(Toplevel):
         br9 = Frame(self, width=400, height=2, bg='white')
         br9.grid(row=9, column=2, padx=(20, 20), pady=(0, 20))
 
-        frame_btn = Frame(self, bg="white", width=400, height=100)
-        frame_btn.grid(row=10, column=3)
-        self.add_btn = Button(
-            frame_btn, width=30, pady=7, text='Create', bg='#57a1f8', fg='white', border=0,
-            font=('Microsoft YaHei UI Light', 11, 'bold'), command=lambda: self.create()
-        )
-        self.add_btn.grid(row=0, column=1, sticky="w", pady=(20, 20))
-        frame_btn.grid_columnconfigure(0, weight=1)
-        frame_btn.grid_columnconfigure(2, weight=1)
-
         self.description = TextWithPlaceholder(self, placeholder="Description", width=40, height=5)
         self.description.grid(column=3, row=0, rowspan=5, sticky="w", pady=(0, 20))
         br4 = Frame(self, width=400, height=2, bg='black')
@@ -116,10 +108,44 @@ class WindowCoinCreate(Toplevel):
         self.grid_columnconfigure(2, weight=1)
         self.grid_columnconfigure(4, weight=1)
 
+        frame_btn = Frame(self, bg="white", width=400, height=400)
+        frame_btn.grid(row=10, column=3)
+        self.sell_delete_btn = Button(
+            frame_btn, width=30, pady=7, text='', bg='#57a1f8', fg='white', border=0,
+            font=('Microsoft YaHei UI Light', 11, 'bold'), command=lambda: self.sell_delete()
+        )
+        self.sell_delete_btn.grid(row=0, column=1, sticky="w", pady=(20, 20))
+        self.create_edit_save_btn = Button(
+            frame_btn, width=30, pady=7, text='', bg='#57a1f8', fg='white', border=0,
+            font=('Microsoft YaHei UI Light', 11, 'bold'), command=lambda: self.create_edit_save()
+        )
+        self.create_edit_save_btn.grid(row=1, column=1, sticky="w", pady=(20, 20))
+        frame_btn.grid_columnconfigure(0, weight=1)
+        frame_btn.grid_columnconfigure(2, weight=1)
+
         self.coin_image_obverse.bind("<Button-1>", self.set_image_obverse)
         self.coin_image_reverse.bind("<Button-1>", self.set_image_reverse)
 
-    def create(self):
+        self.set_mode(self.mode)
+
+    def destroy(self) -> None:
+        Toplevel.destroy(self)
+        self.controller.load_coins()
+
+    def sell_delete(self):
+        if self.mode == WindowMode.VIEW:
+            print("#")
+        else:
+            answer = askyesno('Coin delete confirmation', 'Are you sure? Information about coin will be lost')
+            if answer:
+                connection.delete_coin(self.coin_id)
+                self.controller.load_coins()
+                self.destroy()
+
+    def create_edit_save(self):
+        if self.mode == WindowMode.VIEW:
+            self.set_mode(WindowMode.EDIT)
+            return
         is_error = False
         try:
             value = int(self.value_entry.get())
@@ -149,18 +175,23 @@ class WindowCoinCreate(Toplevel):
         description = self.description.get_text()
         if is_error:
             return
-        token_id = connection.create_token_details(
-            value, currency[0], currency[1], year, type_name, material, self.image_value_obverse,
-            self.image_value_reverse, description, subject
-        )
-        coin_details_id = connection.create_coin_details(
-            diameter, weight, edge
-        )
-        connection.create_coin(token_id, coin_details_id, self.collection_id)
-        self.controller.load_coins()
-        self.destroy()
+        if self.mode == WindowMode.CREATE_NEW:
+            connection.create_coin(value=value, currency_name=currency[0], currency_country=currency[1], year=year,
+                                   token_type=type_name, material=material, image_obverse=self.image_value_obverse,
+                                   image_reverse=self.image_value_reverse, description=description, subject=subject,
+                                   diameter=diameter, weight=weight, edge=edge, collection_id=self.collection_id)
+            self.controller.load_coins()
+            self.destroy()
+        elif self.mode == WindowMode.EDIT:
+            connection.update_coin(value=value, currency_name=currency[0], currency_country=currency[1], year=year,
+                                   token_type=type_name, material=material, image_obverse=self.image_value_obverse,
+                                   image_reverse=self.image_value_reverse, description=description, subject=subject,
+                                   diameter=diameter, weight=weight, edge=edge, coin_id=self.coin_id)
+            self.set_mode(WindowMode.VIEW)
 
     def set_image_obverse(self, e):
+        if self.mode == WindowMode.VIEW:
+            return
         file = open_image("Set obverse")
         if not file:
             return
@@ -174,6 +205,8 @@ class WindowCoinCreate(Toplevel):
         self.image_value_obverse = file.getvalue()
 
     def set_image_reverse(self, e):
+        if self.mode == WindowMode.VIEW:
+            return
         file = open_image("Set reverse")
         if not file:
             return
@@ -185,4 +218,75 @@ class WindowCoinCreate(Toplevel):
         file = io.BytesIO(file.read())
         file.seek(0, os.SEEK_END)
         self.image_value_reverse = file.getvalue()
+
+    def set_enable_state(self, state):
+        self.value_entry.config(state=state)
+        self.currency_combobox.config(state=state)
+        self.year_entry.config(state=state)
+        self.subject.config(state=state)
+        self.diameter_entry.config(state=state)
+        self.weight_entry.config(state=state)
+        self.material_combobox.config(state=state)
+        self.type_combobox.config(state=state)
+        self.edge_combobox.config(state=state)
+        self.description.config(state=state)
+
+    def load(self):
+        rs = connection.get_coin(self.coin_id)
+        if rs[0] is not None:
+            self.value_entry.set_text(str(rs[0]))
+        if rs[1] is not None:
+            self.currency_combobox.current(self.currency_combobox["values"].index(rs[1] + ' | ' + rs[2]))
+        if rs[3] is not None:
+            self.year_entry.set_text(str(rs[3]))
+        if rs[4] is not None:
+            self.type_combobox.current(self.type_combobox["values"].index(rs[4]))
+        if rs[5] is not None:
+            self.material_combobox.current(self.material_combobox["values"].index(rs[5]))
+
+        if rs[6] is not None:
+            img = image_from_blob(rs[6])
+            img = img.resize((400, 400), Image.ANTIALIAS)
+            self.image = ImageTk.PhotoImage(img)
+            self.coin_image_obverse.config(image=self.image)
+            self.image_value_obverse = rs[6]
+
+        if rs[7] is not None:
+            img2 = image_from_blob(rs[7])
+            img2 = img2.resize((400, 400), Image.ANTIALIAS)
+            self.image2 = ImageTk.PhotoImage(img2)
+            self.coin_image_reverse.config(image=self.image2)
+            self.image_value_reverse = rs[7]
+
+        if rs[8] is not None:
+            self.description.set_text(rs[8])
+        if rs[9] is not None:
+            self.subject.set_text(rs[9])
+        if rs[10] is not None:
+            self.diameter_entry.set_text(str(rs[10]))
+        if rs[11] is not None:
+            self.weight_entry.set_text(str(rs[11]))
+        if rs[12] is not None:
+            self.edge_combobox.current(self.edge_combobox["values"].index(rs[12]))
+
+    def set_mode(self, mode):
+        self.mode = mode
+        if self.mode == WindowMode.CREATE_NEW:
+            self.create_edit_save_btn.config(text="CREATE")
+            self.sell_delete_btn.grid_remove()
+            self.set_enable_state(NORMAL)
+            self.title('Create coin')
+        elif self.mode == WindowMode.VIEW:
+            self.create_edit_save_btn.config(text="EDIT")
+            self.sell_delete_btn.config(text="SELL")
+            self.load()
+            self.set_enable_state(DISABLED)
+            self.title('View coin')
+        elif self.mode == WindowMode.EDIT:
+            self.create_edit_save_btn.config(text="SAVE")
+            self.sell_delete_btn.config(text="DELETE")
+            self.set_enable_state(NORMAL)
+            self.title('Edit coin')
+
+
 

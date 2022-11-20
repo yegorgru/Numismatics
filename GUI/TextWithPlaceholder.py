@@ -6,8 +6,12 @@ class TextWithPlaceholder(Text):
         self.insert(INSERT, self.placeholder)
         self['fg'] = self.placeholder_color
 
+    def set_text(self, text):
+        self.delete("1.0", END)
+        self.insert(INSERT, text)
+        self['fg'] = self.default_fg_color
+
     def foc_in(self, *args):
-        print(0000)
         if self['fg'] == self.placeholder_color:
             self.delete("1.0", END)
             self['fg'] = self.default_fg_color

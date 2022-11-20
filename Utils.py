@@ -1,4 +1,6 @@
 from tkinter import filedialog as fd
+import io
+from PIL import Image
 
 
 def open_image(title='Open a file'):
@@ -29,3 +31,9 @@ def tuple_with_delimiter(tuple_list, delimiter):
         s = s[:len(s) - len(delimiter)]
         tup += (s, )
     return tup
+
+
+def image_from_blob(blob):
+    img = blob.read()
+    pre_img = io.BytesIO(img)
+    return Image.open(pre_img)

@@ -1,7 +1,7 @@
 from tkinter import *
 from PIL import Image, ImageTk
 import os
-from tkinter.messagebox import askyesno
+from tkinter.messagebox import askyesno, showinfo, showwarning
 
 from GUI.EntryWithPlaceholder import EntryWithPlaceholder
 from GUI.TextWithPlaceholder import TextWithPlaceholder
@@ -57,7 +57,6 @@ class WindowCollectionCreateEdit(Toplevel):
             text = "Create"
         else:
             text = "Save"
-            self.load()
         self.create_save_btn = Button(
             frame_btn, width=30, pady=7, text=text, bg='#57a1f8', fg='white', border=0,
             font=('Microsoft YaHei UI Light', 11), command=lambda: self.create_save()
@@ -71,20 +70,35 @@ class WindowCollectionCreateEdit(Toplevel):
 
         self.collection_image.bind("<Button-1>", self.set_image)
 
+        self.is_general = False
+        if text == 'Save':
+            self.load()
+
     def create_save(self):
+        name = self.name_entry.get()
         if self.mode == WindowMode.CREATE_NEW:
+            if name == GENERAL_COLLECTION_NAME:
+                showwarning('Info', 'You can\'t create one more \'' + GENERAL_COLLECTION_NAME + '\' collection')
+                return
             connection.create_collection(
-                self.username, self.name_entry.get(), self.description.get_text(), self.image_value
+                self.username, name, self.description.get_text(), self.image_value
             )
             self.controller.load_collections()
         elif self.mode == WindowMode.EDIT:
+            if not self.is_general and name == GENERAL_COLLECTION_NAME:
+                showwarning('Info', 'You can\'t set \'' + GENERAL_COLLECTION_NAME + '\' name for this collection')
+                return
             connection.update_collection(
-                self.controller.collection_id, self.name_entry.get(), self.description.get_text(), self.image_value
+                self.controller.collection_id, name, self.description.get_text(), self.image_value
             )
             self.controller.load_collection_info()
         self.destroy()
 
     def delete(self):
+        name = connection.get_collection_name(self.controller.collection_id)
+        if name == GENERAL_COLLECTION_NAME:
+            showwarning("Info", "You can't delete your \'" + GENERAL_COLLECTION_NAME + "\' collection")
+            return
         answer = askyesno('Collection delete confirmation', 'Are you sure? Information about all tokens will be lost')
         if answer:
             connection.delete_collection(self.controller.collection_id)
@@ -107,6 +121,9 @@ class WindowCollectionCreateEdit(Toplevel):
     def load(self):
         rs = connection.get_collection(self.controller.collection_id)
         self.name_entry.set_text(rs[0])
+        if rs[0] == GENERAL_COLLECTION_NAME:
+            self.name_entry.config(state=DISABLED)
+            self.is_general = True
         if rs[1] is not None:
             self.description.set_text(rs[1])
         if rs[2] is not None:

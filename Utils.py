@@ -1,6 +1,9 @@
 from tkinter import filedialog as fd
 import io
 from PIL import Image
+import os
+
+from Definitions import *
 
 
 def open_image(title='Open a file'):
@@ -37,3 +40,10 @@ def image_from_blob(blob):
     img = blob.read()
     pre_img = io.BytesIO(img)
     return Image.open(pre_img)
+
+
+def get_general_image_bytes():
+    file = open(PATH_IMAGE_COLLECTION_GENERAL, 'rb')
+    file = io.BytesIO(file.read())
+    file.seek(0, os.SEEK_END)
+    image_value = file.getvalue()

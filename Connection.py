@@ -2,6 +2,8 @@ import cx_Oracle
 from enum import Enum
 from verify_email import verify_email
 
+from Utils import *
+
 
 class Connection:
     def __init__(self):
@@ -46,9 +48,35 @@ class Connection:
         rs = self.cursor.execute('SELECT COUNT(*) from consumer where email = :email', (email, )).fetchone()
         if rs[0] == 1:
             return self.CreateUserCode.EMAIL_TAKEN
-        self.cursor.execute(
-            "insert into consumer (name, password, is_admin, email) values (:name, :password, 0, :email)",
-            (username, password, email)
+        img = get_general_image_bytes()
+        self.cursor.execute('''
+            DECLARE
+                var_consumer_id NUMBER;
+            BEGIN
+                INSERT INTO consumer (
+                    name,
+                    password,
+                    is_admin,
+                    email
+                ) VALUES (
+                    :name,
+                    :password,
+                    0,
+                    :email
+                ) RETURNING consumer_id INTO var_consumer_id;
+            
+                INSERT INTO collection (
+                    name,
+                    consumer_id,
+                    image
+                ) VALUES (
+                    :general_name,
+                    var_consumer_id,
+                    :image
+                );
+            
+            END;
+        ''', (username, password, email, GENERAL_COLLECTION_NAME, img)
         )
         return self.CreateUserCode.SUCCESS
 
@@ -61,11 +89,20 @@ class Connection:
             where c.name = :username
             order by
                 (CASE coll.name
-                    WHEN 'General' THEN 2
+                    WHEN :general_name THEN 2
                     ELSE 1
                 END) DESC,
             coll.name DESC
-        """, (username, ))
+        """, (username, GENERAL_COLLECTION_NAME))
+
+    def get_collection_names(self, collection_id):
+        names = self.cursor.execute("""
+            SELECT name
+            from collection
+            where consumer_id = (select consumer_id from collection where collection_id = :collection_id)
+        """, (collection_id, )).fetchall()
+        name = self.get_collection_name(collection_id)
+        return names, name
 
     def get_coins_preview(self, collection_id):
         return self.cursor.execute("""
@@ -82,6 +119,32 @@ class Connection:
             where c.collection_id = :collection_id
         """, (collection_id,))
 
+    def get_user_deals_preview(self, username, active):
+        if active:
+            return self.cursor.execute("""
+                SELECT coin.coin_id, td.value, currency.name, td.year, td.image_obverse, cd.price, cd.date_end
+                from  consumer c
+                inner join coin_deal cd on cd.seller_id = c.consumer_id
+                inner join coin on coin.coin_id = cd.coin_id
+                inner join token_details td on td.token_details_id = coin.token_details_id
+                inner join currency on currency.currency_id = td.currency_id
+                where c.name = :username
+                and cd.date_end is null
+                order by cd.date_begin
+            """, (username,))
+        else:
+            return self.cursor.execute("""
+                SELECT coin.coin_id, td.value, currency.name, td.year, td.image_obverse, cd.price, cd.date_end
+                from  consumer c
+                inner join coin_deal cd on cd.seller_id = c.consumer_id
+                inner join coin on coin.coin_id = cd.coin_id
+                inner join token_details td on td.token_details_id = coin.token_details_id
+                inner join currency on currency.currency_id = td.currency_id
+                where c.name = :username
+                and cd.date_end is not null
+                order by cd.date_begin
+            """, (username,))
+
     def get_token_types(self):
         return self.cursor.execute("select type from token_type").fetchall()
 
@@ -95,7 +158,7 @@ class Connection:
         return self.cursor.execute("select name, country from currency").fetchall()
 
     def create_coin(self, value, currency_name, currency_country, year, token_type, material, image_obverse,
-                    image_reverse, description, subject, diameter, weight, edge, collection_id):
+                    image_reverse, description, subject, diameter, weight, edge, collection_name):
         self.cursor.execute('''
             DECLARE
                 var_token_type_id    NUMBER;
@@ -105,6 +168,7 @@ class Connection:
                 var_edge_id          NUMBER;
                 var_coin_details_id  NUMBER;
                 var_coin_id          NUMBER;
+                var_collection_id    NUMBER;
             BEGIN
                 SELECT
                     token_type_id
@@ -178,19 +242,27 @@ class Connection:
                     var_token_details_id,
                     var_coin_details_id
                 ) RETURNING coin_id INTO var_coin_id;
+                
+                SELECT
+                    collection_id
+                INTO var_collection_id
+                FROM
+                    collection
+                WHERE
+                    name = :collection_name;
             
                 INSERT INTO collection_coin (
                     coin_id,
                     collection_id
                 ) VALUES (
                     var_coin_id,
-                    :collection_id
+                    var_collection_id
                 );
                 
                 COMMIT;
             END;
             ''', (token_type, material, currency_name, currency_country, value, year, image_obverse, image_reverse,
-                  description, subject, edge, diameter, weight, collection_id)
+                  description, subject, edge, diameter, weight, collection_name)
         )
 
     def get_coin(self, coin_id):
@@ -208,7 +280,8 @@ class Connection:
                 td.subject,
                 cd.diameter,
                 cd.weight,
-                edge.name
+                edge.name,
+                coin_deal.coin_deal_id
             FROM
                      coin
                 INNER JOIN token_details td ON td.token_details_id = coin.token_details_id
@@ -217,20 +290,23 @@ class Connection:
                 INNER JOIN token_type ON td.type_id = token_type.token_type_id
                 INNER JOIN material ON td.material_id = material.material_id
                 INNER JOIN edge ON cd.edge_id = edge.edge_id
+                LEFT JOIN coin_deal ON coin_deal.coin_id = coin.coin_id
             WHERE
                 coin.coin_id = :coin_id
         """, (coin_id, )).fetchone()
 
     def update_coin(self, coin_id, value, currency_name, currency_country, year, token_type, material, image_obverse,
-                    image_reverse, description, subject, diameter, weight, edge):
+                    image_reverse, description, subject, diameter, weight, edge, collection_name):
         self.cursor.execute('''
             DECLARE
+                var_coin_id          NUMBER := :coin_id;
                 var_token_type_id    NUMBER;
                 var_material_id      NUMBER;
                 var_currency_id      NUMBER;
                 var_token_details_id NUMBER;
                 var_edge_id          NUMBER;
                 var_coin_details_id  NUMBER;
+                var_collection_id    NUMBER;
             BEGIN
                 SELECT
                     token_details_id,
@@ -241,7 +317,7 @@ class Connection:
                 FROM
                     coin
                 WHERE
-                    coin_id = :coin_id;
+                    coin_id = var_coin_id;
             
                 SELECT
                     token_type_id
@@ -297,13 +373,26 @@ class Connection:
                     edge_id = var_edge_id
                 WHERE
                     coin_details_id = var_coin_details_id;
+                    
+                SELECT 
+                    collection_id
+                INTO var_collection_id
+                FROM
+                    collection
+                WHERE
+                    name = :collection_name;
+                    
+                UPDATE collection_coin 
+                SET
+                    collection_id = var_collection_id
+                WHERE
+                    coin_id = var_coin_id;
             
                 COMMIT;
             END;
             ''', (coin_id, token_type, material, currency_name, currency_country, value, year, image_obverse,
-                  image_reverse, description, subject, edge, diameter, weight)
+                  image_reverse, description, subject, edge, diameter, weight, collection_name)
         )
-        print(self.get_coin(coin_id))
 
     def delete_coin(self, coin_id):
         self.cursor.execute('''
@@ -370,7 +459,15 @@ class Connection:
         )
         self.connection.commit()
 
+    def get_collection_name(self, collection_id):
+        return  self.cursor.execute(
+            "select name from collection where collection_id = :collection_id", (collection_id, )
+        ).fetchone()[0]
+
     def delete_collection(self, collection_id):
+        name = self.get_collection_name(collection_id)
+        if name == GENERAL_COLLECTION_NAME:
+            return False
         self.cursor.execute('''
             DECLARE
                 CURSOR coins IS
@@ -413,6 +510,154 @@ class Connection:
             END;
             ''', (collection_id, )
         )
+        return True
+
+    def create_deal(self, coin_id, price, deal_type):
+        self.cursor.execute('''
+            DECLARE
+                var_seller_id       NUMBER;
+                var_coin_id         NUMBER := :coin_id;
+                var_deal_type_id    NUMBER;
+            BEGIN
+                SELECT
+                    c.consumer_id
+                INTO var_seller_id
+                FROM
+                         consumer c
+                    INNER JOIN collection      coll ON c.consumer_id = coll.consumer_id
+                    INNER JOIN collection_coin cc ON cc.collection_id = coll.collection_id
+                WHERE
+                    cc.coin_id = var_coin_id;
+                    
+                SELECT 
+                    deal_type_id
+                INTO var_deal_type_id
+                FROM 
+                    deal_type
+                WHERE 
+                    type = :deal_type;
+            
+                INSERT INTO coin_deal (
+                    coin_id,
+                    seller_id,
+                    price,
+                    deal_type_id
+                ) VALUES (
+                    var_coin_id,
+                    var_seller_id,
+                    :price,
+                    var_deal_type_id
+                );
+            
+                COMMIT;
+            END;
+            ''', (coin_id, deal_type, price)
+        )
+
+    def cancel_deal(self, coin_id):
+        self.cursor.execute('''
+            DECLARE 
+                var_coin_id NUMBER := :coin_id;
+            BEGIN
+                DELETE(
+                    SELECT * FROM COIN_AUCTION_LOT cal
+                    inner join COIN_DEAL cd ON cd.COIN_DEAL_ID = cal.COIN_DEAL_ID
+                    where cd.coin_id = var_coin_id
+                );
+                DELETE FROM COIN_DEAL cd
+                WHERE cd.coin_id = var_coin_id;
+                COMMIT;
+            END;
+            ''', (coin_id, )
+        )
+
+    def get_deal_details(self, coin_id):
+        deal_type = self.cursor.execute("""
+            select type from deal_type dt
+            inner join coin_deal cd on cd.deal_type_id = dt.deal_type_id
+            where cd.coin_id = :coin_id
+        """, (coin_id,)).fetchone()[0]
+        if deal_type == 'Sale':
+            return self.cursor.execute("""
+                select c.image, c.name, cd.price
+                FROM coin_deal cd
+                inner join consumer c
+                on c.consumer_id = cd.buyer_id
+                where cd.coin_id = :coin_id
+            """, (coin_id,)).fetchone()
+        else:
+            return self.cursor.execute("""
+                SELECT
+                    *
+                FROM
+                    (
+                        SELECT
+                            c.image,
+                            c.name,
+                            cal.price
+                        FROM
+                                 coin_deal cd
+                            INNER JOIN coin_auction_lot cal ON cal.coin_deal_id = cd.coin_deal_id
+                            INNER JOIN consumer         c ON c.consumer_id = cal.buyer_id
+                        WHERE
+                            cd.coin_id = :coin_id
+                        ORDER BY
+                            cal.price DESC
+                    )
+                WHERE
+                    ROWNUM = 1
+            """, (coin_id,)).fetchone()
+
+    def approve_deal(self, coin_id):
+        deal_type = self.cursor.execute("""
+                select type from deal_type dt
+                inner join coin_deal cd on cd.deal_type_id = dt.deal_type_id
+                where cd.coin_id = :coin_id
+            """, (coin_id,)
+        ).fetchone()[0]
+        if deal_type == 'Sale':
+            self.cursor.execute("""   
+                UPDATE coin_deal 
+                SET date_end = SYSDATE
+                WHERE coin_id = :coin_id
+            """, (coin_id,)).fetchone()
+            self.connection.commit()
+        else:
+            self.cursor.execute("""
+                DECLARE
+                    var_price       NUMBER;
+                    var_buyer_id    NUMBER;
+                BEGIN
+                    SELECT
+                        *
+                    INTO var_buyer_id, var_price
+                    FROM
+                    (
+                        SELECT
+                            c.consumer_id,
+                            cal.price
+                        FROM
+                                 coin
+                            INNER JOIN coin_deal        cd ON cd.coin_id = coin.coin_id
+                            INNER JOIN coin_auction_lot cal ON cal.coin_deal_id = cd.coin_deal_id
+                            INNER JOIN consumer         c ON c.consumer_id = cal.buyer_id
+                        WHERE
+                            coin.coin_id = :coin_id
+                        ORDER BY
+                            cal.price DESC
+                    )
+                    WHERE
+                        ROWNUM = 1;
+                    
+                    UPDATE coin_deal
+                    SET buyer_id = var_buyer_id
+                        price = var_price
+                        end_date = SYSDATE;
+                        
+                    commit;
+                    
+            """, (coin_id,)).fetchone()
+
 
 
 connection = Connection()

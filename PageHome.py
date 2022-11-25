@@ -4,6 +4,10 @@ from GUI.GridManager import GridManager
 from CollectionPreview import *
 from WindowMode import WindowMode
 from PIL import Image, ImageTk
+from tkinter import ttk
+from DealPreview import DealPreview
+from GUI.ListManager import ListManager
+from WindowCoinDeal import WindowCoinDeal
 
 
 class PageHome(Frame):
@@ -40,13 +44,22 @@ class PageHome(Frame):
         self.collections_btn.grid(row=0, column=0)
         self.deals_btn = Button(
             section_buttons_frame, width=30, text='Deals', bg='white', fg='black', border=0,
-            font=('Microsoft YaHei UI Light', 15), command=lambda: self.load_collections()
+            font=('Microsoft YaHei UI Light', 15), command=lambda: self.load_deals()
         )
         self.deals_btn.grid(row=0, column=1)
 
         self.collections = None
         self.collections_frame = None
         self.collection_manager = None
+
+        self.deals_var = StringVar()
+        self.deals_combobox = ttk.Combobox(self, width=40, textvariable=self.deals_var, state='readonly')
+        self.deals_combobox.configure(values=('Active deals', 'Previous deals'))
+        self.deals_combobox.current(0)
+        self.deals_combobox.grid(row=3, column=0, pady=(20, 20), sticky="w")
+        self.deals_combobox.grid_remove()
+        self.deals_var.trace('w', self.load_deals)
+        self.deals = None
 
     def load(self):
         self.username = self.controller.username
@@ -57,6 +70,11 @@ class PageHome(Frame):
         print("Home Page page loaded")
 
     def load_collections(self):
+        if self.collections is not None:
+            self.collections.grid_remove()
+        self.deals_combobox.grid_remove()
+        if self.deals is not None:
+            self.deals.grid_remove()
         rs = connection.get_collections_preview(self.username)
         collections = [
             CollectionPreview(self, ("New collection", None, None), CollectionType.CREATE_NEW)
@@ -69,6 +87,23 @@ class PageHome(Frame):
         )
         self.collections.grid(row=2, column=0, sticky='news')
 
+    def load_deals(self, *args):
+        if self.collections is not None:
+            self.collections.grid_remove()
+        self.deals_combobox.grid()
+        if self.deals is not None:
+            self.deals.grid_remove()
+        rs = connection.get_user_deals_preview(self.username, self.deals_var.get() == 'Active deals')
+        print(rs)
+        deals = list()
+        for deal in rs:
+            deals.append(DealPreview(self, deal))
+
+        self.deals = ListManager(
+            self, row_width=200, width=1920, height=750, objects=deals
+        )
+        self.deals.grid(row=4, column=0, sticky='news')
+
     def create_new_collection(self):
         new_collection_window = WindowCollectionCreateEdit(self, WindowMode.CREATE_NEW)
         new_collection_window.grab_set()
@@ -76,6 +111,13 @@ class PageHome(Frame):
     def load_collection(self, collection_id):
         self.controller.collection_id = collection_id
         self.controller.show_frame("PageCollection")
+
+    def load_deal(self, coin_id):
+        deal_window = WindowCoinDeal(self, coin_id)
+        deal_window.grab_set()
+
+    def after_w_coin_deal(self, *args):
+        self.load_deals()
 
 
 

@@ -13,6 +13,7 @@ from SearchUser import SearchUser
 from SearchCollection import SearchCollection
 from SearchCoin import SearchCoin
 from WindowCoinCreateEditSearch import WindowCoinCreateEditSearch
+from WindowConsumerEdit import WindowConsumerEdit
 
 
 class PageHome(Frame):
@@ -27,12 +28,22 @@ class PageHome(Frame):
         img = Image.open(PATH_IMAGE_EMPTY_PROFILE)
         img = img.resize((90, 90), Image.ANTIALIAS)
         self.profile_image = ImageTk.PhotoImage(img)
-        Label(account_frame, image=self.profile_image, bg='white', borderwidth=0).place(x=5, y=5)
+        self.profile_img = Label(account_frame, image=self.profile_image, bg='white', borderwidth=0)
+        self.profile_img.place(x=5, y=5)
 
         img2 = (Image.open(PATH_IMAGE_SETTINGS))
         img2 = img2.resize((70, 70), Image.ANTIALIAS)
         self.settings_image = ImageTk.PhotoImage(img2)
-        Label(account_frame, image=self.settings_image, bg="#57a1f8", borderwidth=0).place(x=1645, y=15)
+        self.settings_img = Label(account_frame, image=self.settings_image, bg="#57a1f8", borderwidth=0)
+        self.settings_img.place(x=1645, y=15)
+        self.settings_img.bind("<Button-1>", self.edit_user)
+
+        img3 = (Image.open(PATH_IMAGE_BACK_BUTTON))
+        img3 = img3.resize((100, 100), Image.ANTIALIAS)
+        self.back_image = ImageTk.PhotoImage(img3)
+        self.back_img = Label(account_frame, image=self.back_image, bg="#57a1f8", borderwidth=0)
+        self.back_img.place(x=1720, y=0)
+        self.back_img.bind("<Button-1>", self.close)
 
         self.profile_name = Label(
             account_frame, text="", fg='white', bg='#57a1f8',
@@ -107,12 +118,21 @@ class PageHome(Frame):
         self.search_top_frame.grid(row=3, column=0, sticky='we')
 
     def load(self):
-        self.username = self.controller.username
-        self.profile_name.configure(text=self.username)
         self.controller.geometry("1920x1080+0+0")
         self.controller.state('zoomed')
+        self.username = self.controller.username
+        self.load_consumer_info()
         self.load_collections()
         print("Home Page page loaded")
+
+    def load_consumer_info(self):
+        self.profile_name.configure(text=self.username)
+        rs = connection.get_consumer(self.username)
+        if rs[3] is not None:
+            img = image_from_blob(rs[3])
+            img = img.resize((90, 90), Image.ANTIALIAS)
+            self.profile_image = ImageTk.PhotoImage(img)
+            self.profile_img.configure(image=self.profile_image)
 
     def load_collections(self):
         self.remove_elements()
@@ -225,7 +245,16 @@ class PageHome(Frame):
         )
         self.results.grid(row=4, column=0, sticky='news', pady=(20, 0))
 
+    def edit_user(self, *args):
+        window = WindowConsumerEdit(self)
+        window.grab_set()
 
-
+    def close(self, e):
+        self.username = None
+        self.controller.username = None
+        self.controller.title('Login')
+        self.controller.geometry('925x500+300+200')
+        self.controller.state('normal')
+        self.controller.show_frame("PageLogin")
 
 

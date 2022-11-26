@@ -1,6 +1,5 @@
 from tkinter import *
 from PIL import Image, ImageTk
-import os
 from tkinter.messagebox import askyesno, showinfo, showwarning
 
 from GUI.EntryWithPlaceholder import EntryWithPlaceholder

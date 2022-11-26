@@ -5,6 +5,16 @@ from verify_email import verify_email
 from Utils import *
 
 
+class UserCode(Enum):
+    SUCCESS = 0
+    NAME_TAKEN = 1
+    NAME_LENGTH = 2
+    EMAIL_INCORRECT = 3
+    EMAIL_LENGTH = 4
+    EMAIL_TAKEN = 5
+    PASSWORD_LENGTH = 6
+
+
 class Connection:
     def __init__(self):
         self.connection = cx_Oracle.connect(
@@ -24,30 +34,21 @@ class Connection:
         else:
             return True, rs[0]
 
-    class CreateUserCode(Enum):
-        SUCCESS = 0
-        NAME_TAKEN = 1
-        NAME_LENGTH = 2
-        EMAIL_INCORRECT = 3
-        EMAIL_LENGTH = 4
-        EMAIL_TAKEN = 5
-        PASSWORD_LENGTH = 6
-
     def create_user(self, username, email, password):
         if len(username) < 4 or len(username) > 20:
-            return self.CreateUserCode.NAME_LENGTH
+            return UserCode.NAME_LENGTH
         if len(password) < 4 or len(password) > 20:
-            return self.CreateUserCode.PASSWORD_LENGTH
+            return UserCode.PASSWORD_LENGTH
         if len(email) > 20:
-            return self.CreateUserCode.EMAIL_LENGTH
+            return UserCode.EMAIL_LENGTH
         rs = self.cursor.execute('SELECT COUNT(*) from consumer where name = :username', (username, )).fetchone()
         if rs[0] == 1:
-            return self.CreateUserCode.NAME_TAKEN
+            return UserCode.NAME_TAKEN
         if not verify_email(email):
-            return self.CreateUserCode.EMAIL_INCORRECT
+            return UserCode.EMAIL_INCORRECT
         rs = self.cursor.execute('SELECT COUNT(*) from consumer where email = :email', (email, )).fetchone()
         if rs[0] == 1:
-            return self.CreateUserCode.EMAIL_TAKEN
+            return UserCode.EMAIL_TAKEN
         img = get_general_image_bytes()
         self.cursor.execute('''
             DECLARE
@@ -74,11 +75,32 @@ class Connection:
                     var_consumer_id,
                     :image
                 );
+                COMMIT;
             
             END;
         ''', (username, password, email, GENERAL_COLLECTION_NAME, img)
         )
-        return self.CreateUserCode.SUCCESS
+        return UserCode.SUCCESS
+
+    def update_consumer(self, name, email, password, img, consumer_id):
+        if len(name) < 4 or len(name) > 20:
+            return UserCode.NAME_LENGTH
+        if len(password) < 4 or len(password) > 20:
+            return UserCode.PASSWORD_LENGTH
+        if len(email) > 20:
+            return UserCode.EMAIL_LENGTH
+        if not verify_email(email):
+            return UserCode.EMAIL_INCORRECT
+        self.cursor.execute('''update consumer
+                                set name = :name, email = :email, password = :password, image = :image 
+                                where consumer_id = :consumer_id
+                            ''', (name, email, password, img, consumer_id))
+        self.connection.commit()
+        return UserCode.SUCCESS
+
+    def get_consumer(self, name):
+        return self.cursor.execute('''select name, email, password, image, consumer_id from consumer 
+                                    where name = :name''', (name, )).fetchone()
 
     def get_collections_preview(self, username):
         return self.cursor.execute("""

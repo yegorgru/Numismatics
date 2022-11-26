@@ -15,12 +15,14 @@ from WindowCoinBeginDeal import WindowCoinBeginDeal
 from WindowCoinDeal import WindowCoinDeal
 
 
-class WindowCoinCreateEdit(Toplevel):
+class WindowCoinCreateEditSearch(Toplevel):
     def __init__(self, controller, window_mode, coin_id=None):
         Toplevel.__init__(self)
         self.mode = window_mode
         self.controller = controller
-        self.collection_id = controller.collection_id
+        self.collection_id = None
+        if self.mode != WindowMode.SEARCH_RESULT and self.mode != WindowMode.SEARCH:
+            self.collection_id = controller.collection_id
         self.coin_id = coin_id
 
         self.geometry('1600x800+200+100')
@@ -35,7 +37,10 @@ class WindowCoinCreateEdit(Toplevel):
         self.currency_var = StringVar()
         self.currency_combobox = ttk.Combobox(self, width=40, textvariable=self.currency_var)
         rs = connection.get_currencies()
-        self.currency_combobox.configure(values=tuple_with_delimiter(rs, ' | '))
+        currency_values = tuple_with_delimiter(rs, ' | ')
+        if self.mode == WindowMode.SEARCH:
+            currency_values = ("", ) + currency_values
+        self.currency_combobox.configure(values=currency_values)
         self.currency_combobox.current(0)
         self.currency_combobox.grid(row=2, column=1, pady=(20, 0), sticky="w")
         br2 = Frame(self, width=400, height=2, bg='white')
@@ -78,7 +83,10 @@ class WindowCoinCreateEdit(Toplevel):
         self.material_var = StringVar()
         self.material_combobox = ttk.Combobox(self, width=40,  textvariable=self.material_var)
         rs = connection.get_material_names()
-        self.material_combobox.configure(values=tuple_list_to_tuple(rs))
+        material_values = tuple_list_to_tuple(rs)
+        if self.mode == WindowMode.SEARCH:
+            material_values = ("", ) + material_values
+        self.material_combobox.configure(values=material_values)
         self.material_combobox.current(0)
         self.material_combobox.grid(row=4, column=2, padx=(83, 20), pady=(20, 0), sticky="w")
         br5 = Frame(self, width=400, height=2, bg='white')
@@ -87,7 +95,10 @@ class WindowCoinCreateEdit(Toplevel):
         self.type_var = StringVar()
         self.type_combobox = ttk.Combobox(self, width=40,  textvariable=self.type_var)
         rs = connection.get_token_types()
-        self.type_combobox.configure(values=tuple_list_to_tuple(rs))
+        type_values = tuple_list_to_tuple(rs)
+        if self.mode == WindowMode.SEARCH:
+            type_values = ("", ) + type_values
+        self.type_combobox.configure(values=type_values)
         self.type_combobox.current(0)
         self.type_combobox.grid(row=6, column=2, padx=(83, 20), pady=(20, 0), sticky="w")
         br6 = Frame(self, width=400, height=2, bg='white')
@@ -96,7 +107,10 @@ class WindowCoinCreateEdit(Toplevel):
         self.edge_var = StringVar()
         self.edge_combobox = ttk.Combobox(self, width=40, textvariable=self.edge_var)
         rs = connection.get_edge_types()
-        self.edge_combobox.configure(values=tuple_list_to_tuple(rs))
+        edge_values = tuple_list_to_tuple(rs)
+        if self.mode == WindowMode.SEARCH:
+            edge_values = ("", ) + edge_values
+        self.edge_combobox.configure(values=edge_values)
         self.edge_combobox.current(0)
         self.edge_combobox.grid(row=8, column=2, padx=(83, 20), pady=(20, 0), sticky="w")
         br9 = Frame(self, width=400, height=2, bg='white')
@@ -128,7 +142,7 @@ class WindowCoinCreateEdit(Toplevel):
         self.sell_delete_btn.grid(row=0, column=1, sticky="w", pady=(20, 20))
         self.create_edit_save_btn = Button(
             self.frame_btn, width=30, pady=7, text='', bg='#57a1f8', fg='white', border=0,
-            font=('Microsoft YaHei UI Light', 11, 'bold'), command=lambda: self.create_edit_save()
+            font=('Microsoft YaHei UI Light', 11, 'bold'), command=lambda: self.create_edit_save_search()
         )
         self.create_edit_save_btn.grid(row=1, column=1, sticky="w", pady=(20, 20))
         self.frame_btn.grid_columnconfigure(0, weight=1)
@@ -137,7 +151,7 @@ class WindowCoinCreateEdit(Toplevel):
         self.frame_btn_sale = Frame(self, bg="white", width=400, height=400)
         self.frame_btn_sale.grid(row=10, column=3)
         self.amount_entry = EntryWithPlaceholder(self.frame_btn_sale, "Amount")
-        self.value_entry.grid(row=0, column=1, sticky="w", pady=(20, 0))
+        self.amount_entry.grid(row=0, column=1, sticky="w", pady=(20, 0))
         br99 = Frame(self.frame_btn_sale, width=400, height=2, bg='black')
         br99.grid(row=1, column=1, sticky="w", pady=(0, 20))
         self.make_offer_btn = Button(
@@ -149,14 +163,28 @@ class WindowCoinCreateEdit(Toplevel):
         self.frame_btn_sale.grid_columnconfigure(2, weight=1)
         self.frame_btn_sale.grid_remove()
 
+        self.frame_search_btn = Frame(self, bg="white", width=400, height=400)
+        self.frame_search_btn.grid(row=10, column=3)
+        self.search_btn = Button(
+            self.frame_search_btn, width=30, pady=7, text='Search', bg='#57a1f8', fg='white', border=0,
+            font=('Microsoft YaHei UI Light', 11, 'bold'), command=lambda: self.create_edit_save_search()
+        )
+        self.search_btn.grid(row=0, column=1, sticky="w", pady=(20, 20))
+        self.frame_search_btn.grid_columnconfigure(0, weight=1)
+        self.frame_search_btn.grid_columnconfigure(2, weight=1)
+        self.frame_search_btn.grid_remove()
+
         self.coin_image_obverse.bind("<Button-1>", self.set_image_obverse)
         self.coin_image_reverse.bind("<Button-1>", self.set_image_reverse)
+
+        self.sale_possible = False
 
         self.set_mode(self.mode)
 
     def destroy(self) -> None:
         Toplevel.destroy(self)
-        self.controller.load_coins()
+        if self.mode != WindowMode.SEARCH_RESULT and self.mode != WindowMode.SEARCH:
+            self.controller.load_coins()
 
     def sell_delete(self):
         if self.mode == WindowMode.VIEW:
@@ -176,7 +204,7 @@ class WindowCoinCreateEdit(Toplevel):
         if destroy:
             self.destroy()
 
-    def create_edit_save(self):
+    def create_edit_save_search(self):
         if self.mode == WindowMode.ON_SALE:
             showinfo("Info", "You can't edit coin when it's on sale")
             return
@@ -185,51 +213,80 @@ class WindowCoinCreateEdit(Toplevel):
             return
         is_error = False
         try:
-            value = int(self.value_entry.get())
+            value = int(self.value_entry.get_text())
         except ValueError:
             self.value_entry.set_text("1")
             is_error = True
-        currency = self.currency_var.get().split(" | ")
+            value = None
+        if self.currency_var.get() == "":
+            currency_name = None
+            currency_country = None
+        else:
+            currency = self.currency_var.get().split(" | ")
+            currency_name = currency[0]
+            currency_country = currency[1]
         try:
-            year = int(self.year_entry.get())
+            year = int(self.year_entry.get_text())
         except ValueError:
             self.year_entry.set_text("2000")
             is_error = True
+            year = None
         subject = self.subject.get_text()
         try:
-            diameter = float(self.diameter_entry.get())
+            diameter = float(self.diameter_entry.get_text())
         except ValueError:
             self.diameter_entry.set_text("10.0")
             is_error = True
+            diameter = None
         try:
-            weight = float(self.weight_entry.get())
+            weight = float(self.weight_entry.get_text())
         except ValueError:
             self.weight_entry.set_text("2.0")
             is_error = True
-        material = self.material_var.get()
-        type_name = self.type_var.get()
-        edge = self.edge_var.get()
+            weight = None
+        if self.material_var.get() == "":
+            material = None
+        else:
+            material = self.material_var.get()
+        if self.type_var.get() == "":
+            type_name = None
+        else:
+            type_name = self.type_var.get()
+        if self.edge_var.get() == "":
+            edge = None
+        else:
+            edge = self.edge_var.get()
         description = self.description.get_text()
-        collection_name = self.collection_var.get()
-        if is_error:
+        if self.mode != WindowMode.SEARCH:
+            collection_name = self.collection_var.get()
+        if is_error and self.mode != WindowMode.SEARCH:
             return
         if self.mode == WindowMode.CREATE_NEW:
-            connection.create_coin(value=value, currency_name=currency[0], currency_country=currency[1], year=year,
-                                   token_type=type_name, material=material, image_obverse=self.image_value_obverse,
-                                   image_reverse=self.image_value_reverse, description=description, subject=subject,
-                                   diameter=diameter, weight=weight, edge=edge, collection_name=collection_name)
+            connection.create_coin(value=value, currency_name=currency_name, currency_country=currency_country,
+                                   year=year, token_type=type_name, material=material,
+                                   image_obverse=self.image_value_obverse, image_reverse=self.image_value_reverse,
+                                   description=description, subject=subject, diameter=diameter, weight=weight,
+                                   edge=edge, collection_name=collection_name)
             self.controller.load_coins()
             self.destroy()
         elif self.mode == WindowMode.EDIT:
-            connection.update_coin(value=value, currency_name=currency[0], currency_country=currency[1], year=year,
-                                   token_type=type_name, material=material, image_obverse=self.image_value_obverse,
-                                   image_reverse=self.image_value_reverse, description=description, subject=subject,
-                                   diameter=diameter, weight=weight, edge=edge, coin_id=self.coin_id,
-                                   collection_name=collection_name)
+            connection.update_coin(value=value, currency_name=currency_name, currency_country=currency_country,
+                                   year=year, token_type=type_name, material=material,
+                                   image_obverse=self.image_value_obverse, image_reverse=self.image_value_reverse,
+                                   description=description, subject=subject, diameter=diameter, weight=weight,
+                                   edge=edge, coin_id=self.coin_id, collection_name=collection_name)
             self.set_mode(WindowMode.VIEW)
+        elif self.mode == WindowMode.SEARCH:
+            rs = connection.search_coins_by_details(
+                value=value, currency_name=currency_name, currency_country=currency_country, year=year,
+                token_type=type_name, material=material, description=description, subject=subject, diameter=diameter,
+                weight=weight, edge=edge
+            )
+            self.controller.set_search_results(rs)
+            self.destroy()
 
     def set_image_obverse(self, e):
-        if self.mode == WindowMode.VIEW:
+        if not (self.mode == WindowMode.CREATE_NEW or self.mode == WindowMode.EDIT):
             return
         file = open_image("Set obverse")
         if not file:
@@ -244,7 +301,7 @@ class WindowCoinCreateEdit(Toplevel):
         self.image_value_obverse = file.getvalue()
 
     def set_image_reverse(self, e):
-        if self.mode == WindowMode.VIEW:
+        if not (self.mode == WindowMode.CREATE_NEW or self.mode == WindowMode.EDIT):
             return
         file = open_image("Set reverse")
         if not file:
@@ -270,7 +327,8 @@ class WindowCoinCreateEdit(Toplevel):
             self.type_combobox.config(state="readonly")
             self.edge_combobox.config(state="readonly")
             self.description.config(state=NORMAL)
-            self.collection_combobox.config(state="readonly")
+            if self.collection_id is not None:
+                self.collection_combobox.config(state="readonly")
         else:
             self.value_entry.config(state=DISABLED)
             self.currency_combobox.config(state=DISABLED)
@@ -282,7 +340,8 @@ class WindowCoinCreateEdit(Toplevel):
             self.type_combobox.config(state=DISABLED)
             self.edge_combobox.config(state=DISABLED)
             self.description.config(state=DISABLED)
-            self.collection_combobox.config(state=DISABLED)
+            if self.collection_id is not None:
+                self.collection_combobox.config(state=DISABLED)
 
     def load(self):
         rs = connection.get_coin(self.coin_id)
@@ -322,7 +381,9 @@ class WindowCoinCreateEdit(Toplevel):
         if rs[12] is not None:
             self.edge_combobox.current(self.edge_combobox["values"].index(rs[12]))
         if rs[13] is not None:
-            self.set_mode(WindowMode.ON_SALE)
+            if self.mode != WindowMode.SEARCH_RESULT:
+                self.set_mode(WindowMode.ON_SALE)
+        self.sale_possible = rs[13] is not None
 
     def set_mode(self, mode):
         self.mode = mode
@@ -344,33 +405,25 @@ class WindowCoinCreateEdit(Toplevel):
             self.title('Edit coin')
         elif self.mode == WindowMode.ON_SALE:
             self.sell_delete_btn.config(text="SALE DETAILS")
-        elif self.mode == WindowMode.SALE_VIEW:
+        elif self.mode == WindowMode.SEARCH_RESULT:
             self.frame_btn.grid_remove()
-        elif self.mode == WindowMode.SALE_VIEW or self.mode == WindowMode.AUCTION_VIEW:
+            self.load()
+            self.set_enable_state(False)
+            if self.sale_possible:
+                self.frame_btn_sale.grid()
+        elif self.mode == WindowMode.SEARCH:
             self.frame_btn.grid_remove()
-            self.frame_btn_sale.grid()
-            if self.mode == WindowMode.SALE_VIEW:
-                price = connection.get_sale_price(self.coin_id)
-                self.amount_entry.set_text(price)
-                self.amount_entry.config(state=DISABLED)
+            self.coin_image_obverse.grid_remove()
+            self.coin_image_reverse.grid_remove()
+            self.frame_search_btn.grid()
+            self.set_enable_state(True)
+
+    def refresh_deal_amount(self):
+        self.amount_entry.set_text(str(connection.refresh_deal_value(self.coin_id)))
 
     def make_offer(self):
-        if self.mode == WindowMode.SALE_VIEW:
-            try:
-                amount = int(self.amount_entry.get())
-            except ValueError:
-                price = connection.get_sale_price(self.coin_id)
-                self.amount_entry.set_text(price)
-                return
-            connection.make_sale_offer(self.controller.user_id, amount)
-        elif self.mode == WindowMode.AUCTION_VIEW:
-            try:
-                amount = int(self.amount_entry.get())
-            except ValueError:
-                price = connection.get_auction_price(self.coin_id)
-                self.amount_entry.set_text(price[0] + price[1])
-                return
-            connection.make_auction_offer(self.controller.user_id, amount)
+        print('#')
+
 
 
 

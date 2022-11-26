@@ -75,7 +75,7 @@ class WindowCollectionCreateEdit(Toplevel):
             self.load()
 
     def create_save(self):
-        name = self.name_entry.get()
+        name = self.name_entry.get_text()
         if self.mode == WindowMode.CREATE_NEW:
             if name == GENERAL_COLLECTION_NAME:
                 showwarning('Info', 'You can\'t create one more \'' + GENERAL_COLLECTION_NAME + '\' collection')

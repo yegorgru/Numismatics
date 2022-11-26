@@ -16,14 +16,16 @@ class FrameListCell(Frame):
         self.image = ImageTk.PhotoImage(img)
         self.img_label = Label(self, image=self.image, bg='white', borderwidth=5)
         self.img_label.grid(row=0, column=0)
+        col_number = 1
 
-        self.text_columns = obj.text_columns
-        self.heading = Label(self, width=20,  text=self.text_columns[0], fg='black', bg='white', font=('Microsoft YaHei UI Light', 12, 'bold'))
-        self.heading.grid(row=0, column=1)
+        for col in obj.text_columns:
+            text_column = Label(self, width=20,  text=col, fg='black', bg='white', font=('Microsoft YaHei UI Light', 12, 'bold'))
+            text_column.grid(row=0, column=col_number)
+            col_number = col_number + 1
+            text_column.bind("<Button-1>", self.click_slot)
 
         self.bind("<Button-1>", self.click_slot)
         self.img_label.bind("<Button-1>", self.click_slot)
-        self.heading.bind("<Button-1>", self.click_slot)
 
 
 class ListManager(Frame):

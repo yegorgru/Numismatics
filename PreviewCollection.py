@@ -11,7 +11,7 @@ class CollectionType(Enum):
     COLLECTION = 2
 
 
-class CollectionPreview:
+class PreviewCollection:
     def __init__(self, controller, collection, collection_type=CollectionType.COLLECTION):
         self.controller = controller
         self.collection_type = collection_type

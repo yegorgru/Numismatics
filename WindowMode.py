@@ -6,5 +6,5 @@ class WindowMode(Enum):
     EDIT = 1
     VIEW = 2
     ON_SALE = 3
-    SALE_VIEW = 4
-    AUCTION_VIEW = 5
+    SEARCH_RESULT = 4
+    SEARCH = 5

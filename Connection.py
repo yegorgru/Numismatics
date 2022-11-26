@@ -122,7 +122,7 @@ class Connection:
     def get_user_deals_preview(self, username, active):
         if active:
             return self.cursor.execute("""
-                SELECT coin.coin_id, td.value, currency.name, td.year, td.image_obverse, cd.price, cd.date_end
+                SELECT coin.coin_id, td.value, currency.name, td.year, td.image_obverse, cd.price, cd.date_begin
                 from  consumer c
                 inner join coin_deal cd on cd.seller_id = c.consumer_id
                 inner join coin on coin.coin_id = cd.coin_id
@@ -130,7 +130,7 @@ class Connection:
                 inner join currency on currency.currency_id = td.currency_id
                 where c.name = :username
                 and cd.date_end is null
-                order by cd.date_begin
+                order by cd.date_begin desc
             """, (username,))
         else:
             return self.cursor.execute("""
@@ -142,7 +142,7 @@ class Connection:
                 inner join currency on currency.currency_id = td.currency_id
                 where c.name = :username
                 and cd.date_end is not null
-                order by cd.date_begin
+                order by cd.date_end desc
             """, (username,))
 
     def get_token_types(self):
@@ -608,6 +608,38 @@ class Connection:
                     ROWNUM = 1
             """, (coin_id,)).fetchone()
 
+    def refresh_deal_value(self, coin_id):
+        deal_type = self.cursor.execute("""
+                        select type from deal_type dt
+                        inner join coin_deal cd on cd.deal_type_id = dt.deal_type_id
+                        where cd.coin_id = :coin_id
+                    """, (coin_id,)
+                                        ).fetchone()[0]
+        if deal_type == 'Sale':
+            return self.cursor.execute("""   
+                        select price from coin_deal where coin_id = :coin_id
+                    """, (coin_id,)).fetchone()[0]
+        else:
+            return self.cursor.execute("""
+                SELECT
+                    *
+                FROM
+                    (
+                        SELECT
+                            cal.price
+                        FROM
+                                 coin_deal cd
+                            INNER JOIN coin_auction_lot cal ON cal.coin_deal_id = cd.coin_deal_id
+                        WHERE
+                            cd.coin_id = :coin_id
+                        ORDER BY
+                            cal.price DESC
+                    )
+                WHERE
+                    ROWNUM = 1
+
+                    """, (coin_id,)).fetchone()[0]
+
     def approve_deal(self, coin_id):
         deal_type = self.cursor.execute("""
                 select type from deal_type dt
@@ -658,6 +690,159 @@ class Connection:
                     
             """, (coin_id,)).fetchone()
 
+    def search_users(self, name):
+        return self.cursor.execute("""
+            SELECT
+                t1.col_id,
+                t1.col_name,
+                t1.col_count,
+                t2.image
+            FROM
+                     (
+                    SELECT
+                        c.consumer_id       AS col_id,
+                        c.name              AS col_name,
+                        COUNT(coin.coin_id) col_count
+                    FROM
+                             consumer c
+                        INNER JOIN collection      coll ON coll.consumer_id = c.consumer_id
+                        INNER JOIN collection_coin cc ON cc.collection_id = coll.collection_id
+                        INNER JOIN coin ON coin.coin_id = cc.coin_id
+                    WHERE
+                        c.name like '%' || :name || '%'
+                    GROUP BY
+                        c.consumer_id,
+                        c.name
+                ) t1
+                INNER JOIN consumer t2 ON t2.consumer_id = t1.col_id
+        """, (name, )).fetchall()
+
+    def search_collections(self, name):
+        return self.cursor.execute("""
+            SELECT
+                t1.col_id,
+                t1.col_name,
+                t2.name,
+                t1.col_count,
+                t3.image
+            FROM
+                     (
+                    SELECT
+                        coll.collection_id  AS col_id,
+                        coll.name           AS col_name,
+                        coll.consumer_id    AS cons_id,
+                        COUNT(coin.coin_id) AS col_count
+                    FROM
+                             collection coll
+                        INNER JOIN collection_coin cc ON cc.collection_id = coll.collection_id
+                        INNER JOIN coin ON coin.coin_id = cc.coin_id
+                    WHERE
+                        coll.name LIKE '%' || :name || '%' 
+                            OR coll.description LIKE '%' || :name || '%' 
+                    GROUP BY
+                        coll.collection_id,
+                        coll.name,
+                        coll.consumer_id
+                ) t1
+                INNER JOIN consumer   t2 ON t2.consumer_id = t1.cons_id
+                INNER JOIN collection t3 ON t3.collection_id = t1.col_id
+        """, (name, name)).fetchall()
+
+    def search_user_collections(self, user_id):
+        return self.cursor.execute("""
+            SELECT
+                t1.col_id,
+                t1.col_name,
+                t2.name,
+                t1.col_count,
+                t3.image
+            FROM
+                     (
+                    SELECT
+                        coll.collection_id  AS col_id,
+                        coll.name           AS col_name,
+                        coll.consumer_id    AS cons_id,
+                        COUNT(coin.coin_id) AS col_count
+                    FROM
+                             collection coll
+                        INNER JOIN collection_coin cc ON cc.collection_id = coll.collection_id
+                        INNER JOIN coin ON coin.coin_id = cc.coin_id
+                    WHERE
+                        coll.consumer_id = :user_id
+                    GROUP BY
+                        coll.collection_id,
+                        coll.name,
+                        coll.consumer_id
+                ) t1
+                INNER JOIN consumer   t2 ON t2.consumer_id = t1.cons_id
+                INNER JOIN collection t3 ON t3.collection_id = t1.col_id
+        """, (user_id, )).fetchall()
+
+    def search_collection_coins(self, collection_id):
+        return self.cursor.execute("""
+            SELECT coin.coin_id, td.value, currency.name, td.year, td.subject, cons.name, td.image_obverse
+            from coin
+            inner join collection_coin cc
+                on cc.coin_id = coin.coin_id
+            inner join collection c
+                on c.collection_id = cc.collection_id
+            inner join token_details td
+                on coin.token_details_id = td.token_details_id
+            inner join currency
+                on currency.currency_id = td.currency_id
+            inner join consumer cons
+                on cons.consumer_id = c.consumer_id
+            where c.collection_id = :collection_id
+        """, (collection_id,)).fetchall()
+
+    def search_coins_by_details(self, value, currency_name, currency_country, year, token_type, material, description,
+                                subject, diameter, weight, edge):
+        statement = """
+            SELECT coin.coin_id, td.value, currency.name, td.year, td.subject, cons.name, td.image_obverse
+            from coin
+            inner join collection_coin cc
+                on cc.coin_id = coin.coin_id
+            inner join collection c
+                on c.collection_id = cc.collection_id
+            inner join token_details td
+                on coin.token_details_id = td.token_details_id
+            inner join coin_details cd
+                on coin.coin_details_id = cd.coin_details_id
+            inner join currency
+                on currency.currency_id = td.currency_id
+            inner join consumer cons
+                on cons.consumer_id = c.consumer_id
+            inner join token_type
+                on token_type.token_type_id = td.type_id
+            inner join material
+                on material.material_id = td.material_id
+            inner join edge
+                on edge.edge_id = cd.edge_id
+            where 1 = 1
+        """
+        if value is not None:
+            statement += " and td.value = " + str(value)
+        if currency_name is not None:
+            statement += " and currency.name = '" + currency_name + "'"
+        if currency_country is not None:
+            statement += " and currency.country = '" + currency_country + "'"
+        if year is not None:
+            statement += " and td.year = " + str(year)
+        if token_type is not None:
+            statement += " and token_type.type = '" + token_type + "'"
+        if material is not None:
+            statement += " and material.name = '" + material + "'"
+        if description is not None and description != "":
+            statement += " and td.description like  '%" + description + "%'"
+        if subject is not None and subject != "":
+            statement += " and td.subject like  '%" + subject + "%'"
+        if diameter is not None:
+            statement += " and cd.diameter = " + str(diameter)
+        if weight is not None:
+            statement += " and cd.weight = " + str(weight)
+        if edge is not None:
+            statement += " and edge.name = '" + edge + "'"
+        return self.cursor.execute(statement).fetchall()
 
 
 connection = Connection()

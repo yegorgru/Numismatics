@@ -1,13 +1,18 @@
 from Connection import *
 from WindowCollectionCreateEdit import WindowCollectionCreateEdit
 from GUI.GridManager import GridManager
-from CollectionPreview import *
+from PreviewCollection import *
 from WindowMode import WindowMode
 from PIL import Image, ImageTk
 from tkinter import ttk
-from DealPreview import DealPreview
+from PreviewDeal import PreviewDeal
 from GUI.ListManager import ListManager
 from WindowCoinDeal import WindowCoinDeal
+from GUI.EntryWithPlaceholder import EntryWithPlaceholder
+from SearchUser import SearchUser
+from SearchCollection import SearchCollection
+from SearchCoin import SearchCoin
+from WindowCoinCreateEditSearch import WindowCoinCreateEditSearch
 
 
 class PageHome(Frame):
@@ -43,10 +48,15 @@ class PageHome(Frame):
         )
         self.collections_btn.grid(row=0, column=0)
         self.deals_btn = Button(
-            section_buttons_frame, width=30, text='Deals', bg='white', fg='black', border=0,
+            section_buttons_frame, width=30, text='My deals', bg='white', fg='black', border=0,
             font=('Microsoft YaHei UI Light', 15), command=lambda: self.load_deals()
         )
         self.deals_btn.grid(row=0, column=1)
+        self.search_page_btn = Button(
+            section_buttons_frame, width=30, text='Search', bg='white', fg='black', border=0,
+            font=('Microsoft YaHei UI Light', 15), command=lambda: self.show_search_tab()
+        )
+        self.search_page_btn.grid(row=0, column=2)
 
         self.collections = None
         self.collections_frame = None
@@ -56,10 +66,45 @@ class PageHome(Frame):
         self.deals_combobox = ttk.Combobox(self, width=40, textvariable=self.deals_var, state='readonly')
         self.deals_combobox.configure(values=('Active deals', 'Previous deals'))
         self.deals_combobox.current(0)
-        self.deals_combobox.grid(row=3, column=0, pady=(20, 20), sticky="w")
+        self.deals_combobox.grid(row=3, column=0, padx=(20, 20), pady=(20, 20), sticky="w")
         self.deals_combobox.grid_remove()
         self.deals_var.trace('w', self.load_deals)
         self.deals = None
+        self.results = None
+
+        self.search_top_frame = Frame(self, width=1920, height=100, bg="white")
+        Label(
+            self.search_top_frame, text="Search user/collection", fg='black', bg='white', justify=LEFT,
+            font=('Microsoft YaHei UI Light', 11, 'bold')
+        ).grid(row=0, column=0, sticky="we", padx=(20, 20))
+        self.search_entry = EntryWithPlaceholder(self.search_top_frame, placeholder='Name')
+        self.search_entry.grid(row=1, column=0, sticky="sw", padx=(20, 20))
+        br = Frame(self.search_top_frame, width=400, height=2, bg='black')
+        br.grid(row=2, column=0, sticky="nw", pady=(0, 20), padx=(20, 20))
+        self.search_btn = Button(
+            self.search_top_frame, width=30, pady=7, text='Search', bg='#57a1f8', fg='white', border=0,
+            font=('Microsoft YaHei UI Light', 11, 'bold'), command=lambda: self.search_by_name()
+        )
+        self.search_btn.grid(row=3, column=0, sticky='we', padx=(20, 20))
+        Label(
+            self.search_top_frame, text="OR", fg='black', bg='white', justify=CENTER,
+            font=('Microsoft YaHei UI Light', 11, 'bold')
+        ).grid(row=0, column=1, sticky='we', padx=(20, 20))
+        Label(
+            self.search_top_frame, text="Search by token details", fg='black', bg='white', justify=CENTER,
+            font=('Microsoft YaHei UI Light', 11, 'bold')
+        ).grid(row=0, column=2, sticky='we', padx=(20, 20))
+        self.search_token_var = StringVar()
+        self.search_token_combobox = ttk.Combobox(self.search_top_frame, width=40, textvariable=self.search_token_var,
+                                                  values=('Coin', 'Banknote'), state='readonly')
+        self.search_token_combobox.current(0)
+        self.search_token_combobox.grid(row=1, column=2, pady=(20, 0), sticky="we", padx=(20, 20))
+        self.search_token_btn = Button(
+            self.search_top_frame, width=30, pady=7, text='Search by details', bg='#57a1f8', fg='white', border=0,
+            font=('Microsoft YaHei UI Light', 11, 'bold'), command=lambda: self.search_by_details()
+        )
+        self.search_token_btn.grid(row=3, column=2, sticky='we', padx=(20, 20))
+        self.search_top_frame.grid(row=3, column=0, sticky='we')
 
     def load(self):
         self.username = self.controller.username
@@ -70,34 +115,30 @@ class PageHome(Frame):
         print("Home Page page loaded")
 
     def load_collections(self):
-        if self.collections is not None:
-            self.collections.grid_remove()
-        self.deals_combobox.grid_remove()
-        if self.deals is not None:
-            self.deals.grid_remove()
+        self.remove_elements()
         rs = connection.get_collections_preview(self.username)
         collections = [
-            CollectionPreview(self, ("New collection", None, None), CollectionType.CREATE_NEW)
+            PreviewCollection(self, ("New collection", None, None), CollectionType.CREATE_NEW)
         ]
         for collection in rs:
-            collections.append(CollectionPreview(self, collection, CollectionType.COLLECTION))
+            collections.append(PreviewCollection(self, collection, CollectionType.COLLECTION))
 
         self.collections = GridManager(
             self, column_count=7, row_width=200, column_width=200, width=1920, height=800, objects=collections
         )
         self.collections.grid(row=2, column=0, sticky='news')
 
+    def show_search_tab(self):
+        self.remove_elements()
+        self.search_top_frame.grid()
+
     def load_deals(self, *args):
-        if self.collections is not None:
-            self.collections.grid_remove()
+        self.remove_elements()
         self.deals_combobox.grid()
-        if self.deals is not None:
-            self.deals.grid_remove()
         rs = connection.get_user_deals_preview(self.username, self.deals_var.get() == 'Active deals')
-        print(rs)
         deals = list()
         for deal in rs:
-            deals.append(DealPreview(self, deal))
+            deals.append(PreviewDeal(self, deal))
 
         self.deals = ListManager(
             self, row_width=200, width=1920, height=750, objects=deals
@@ -119,6 +160,70 @@ class PageHome(Frame):
     def after_w_coin_deal(self, *args):
         self.load_deals()
 
+    def remove_elements(self):
+        if self.collections is not None:
+            self.collections.grid_remove()
+        self.deals_combobox.grid_remove()
+        if self.deals is not None:
+            self.deals.grid_remove()
+        self.search_top_frame.grid_remove()
+        if self.results is not None:
+            self.results.grid_remove()
+
+    def search_by_name(self):
+        input_name = self.search_entry.get()
+        users = connection.search_users(input_name)
+        collections = connection.search_collections(input_name)
+        search_results = list()
+        for user in users:
+            search_results.append(SearchUser(self, user))
+        for coll in collections:
+            search_results.append(SearchCollection(self, coll))
+
+        self.results = ListManager(
+            self, row_width=200, width=1920, height=750, objects=search_results
+        )
+        self.results.grid(row=4, column=0, sticky='news', pady=(20, 0))
+
+    def search_by_details(self):
+        coin_window = WindowCoinCreateEditSearch(self, window_mode=WindowMode.SEARCH, coin_id=None)
+        coin_window.grab_set()
+
+    def load_search_user(self, user_id):
+        collections = connection.search_user_collections(user_id)
+        search_results = list()
+        for coll in collections:
+            search_results.append(SearchCollection(self, coll))
+
+        self.results = ListManager(
+            self, row_width=200, width=1920, height=750, objects=search_results
+        )
+        self.results.grid(row=4, column=0, sticky='news', pady=(20, 0))
+
+    def load_search_coins(self, collection_id):
+        coins = connection.search_collection_coins(collection_id)
+        search_results = list()
+        for coin in coins:
+            search_results.append(SearchCoin(self, coin))
+
+        self.results = ListManager(
+            self, row_width=200, width=1920, height=750, objects=search_results
+        )
+        self.results.grid(row=4, column=0, sticky='news', pady=(20, 0))
+
+    def load_search_coin(self, coin_id):
+        coin_window = WindowCoinCreateEditSearch(self, window_mode=WindowMode.SEARCH_RESULT, coin_id=coin_id)
+        coin_window.grab_set()
+
+    def set_search_results(self, rs):
+        search_results = list()
+        for coin in rs:
+            search_results.append(SearchCoin(self, coin))
+
+        self.results = ListManager(
+            self, row_width=200, width=1920, height=750, objects=search_results
+        )
+        self.results.grid(row=4, column=0, sticky='news', pady=(20, 0))
 
 
 

@@ -48,7 +48,7 @@ class WindowCoinBeginDeal(Toplevel):
 
     def create_deal(self):
         try:
-            price = int(self.price_entry.get())
+            price = int(self.price_entry.get_text())
             deal_type = self.deal_type_var.get()
         except ValueError:
             self.price_entry.set_text("1")

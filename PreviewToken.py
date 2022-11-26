@@ -11,7 +11,7 @@ class TokenType(Enum):
     TOKEN = 2
 
 
-class TokenPreview:
+class PreviewToken:
     def __init__(self, controller, token, token_type=TokenType.TOKEN):
         self.controller = controller
         self.token_type = token_type

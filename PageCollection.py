@@ -1,7 +1,7 @@
 from Connection import *
-from WindowCoinCreateEdit import WindowCoinCreateEdit
+from WindowCoinCreateEditSearch import WindowCoinCreateEditSearch
 from GUI.GridManager import GridManager
-from TokenPreview import *
+from PreviewToken import *
 import textwrap
 
 from WindowCollectionCreateEdit import WindowCollectionCreateEdit
@@ -92,10 +92,10 @@ class PageCollection(Frame):
     def load_coins(self):
         rs = connection.get_coins_preview(self.collection_id)
         coins = [
-            TokenPreview(self, ("New coin", ), TokenType.CREATE_NEW)
+            PreviewToken(self, ("New coin",), TokenType.CREATE_NEW)
         ]
         for collection in rs:
-            coins.append(TokenPreview(self, collection, TokenType.TOKEN))
+            coins.append(PreviewToken(self, collection, TokenType.TOKEN))
 
         self.coins = GridManager(
             self, column_count=7, row_width=200, column_width=200, width=1920, height=630, objects=coins
@@ -109,11 +109,11 @@ class PageCollection(Frame):
         print("#")
 
     def create_new_coin(self):
-        new_coin_window = WindowCoinCreateEdit(self, window_mode=WindowMode.CREATE_NEW)
+        new_coin_window = WindowCoinCreateEditSearch(self, window_mode=WindowMode.CREATE_NEW)
         new_coin_window.grab_set()
 
     def load_coin(self, coin_id):
-        coin_window = WindowCoinCreateEdit(self, window_mode=WindowMode.VIEW, coin_id=coin_id)
+        coin_window = WindowCoinCreateEditSearch(self, window_mode=WindowMode.VIEW, coin_id=coin_id)
         coin_window.grab_set()
 
     def edit_collection(self, e):

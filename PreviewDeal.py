@@ -5,12 +5,11 @@ import io
 from Definitions import *
 
 
-class DealPreview:
+class PreviewDeal:
     def __init__(self, controller, deal):
-        # 5: cd.price, 6: cd.date_end
         self.controller = controller
         self.id = deal[0]
-        self.text_columns = [str(deal[1]) + ' ' + deal[2] + ', ' + str(deal[3])]
+        self.text_columns = [str(deal[1]) + ' ' + deal[2] + ', ' + str(deal[3]), str(deal[5]) + ' $', str(deal[6])]
         if deal[4] is None:
             self.image = Image.open(PATH_IMAGE_EMPTY)
         else:

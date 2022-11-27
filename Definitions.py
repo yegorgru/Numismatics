@@ -6,4 +6,4 @@ PATH_IMAGE_SETTINGS = "assets/settings.png"
 PATH_IMAGE_LOGIN = "assets/login.png"
 PATH_IMAGE_BACK_BUTTON = "assets/back_btn.png"
 GENERAL_COLLECTION_NAME = "General"
-
+STATISTICS_USER = "Show user statistics"

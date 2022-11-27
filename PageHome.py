@@ -69,6 +69,11 @@ class PageHome(Frame):
             font=('Microsoft YaHei UI Light', 15), command=lambda: self.show_search_tab()
         )
         self.search_page_btn.grid(row=0, column=2)
+        self.statistics_btn = Button(
+            section_buttons_frame, width=30, text='Statistics', bg='white', fg='black', border=0,
+            font=('Microsoft YaHei UI Light', 15), command=lambda: self.show_statistics_tab()
+        )
+        self.statistics_btn.grid(row=0, column=3)
 
         self.collections = None
         self.collections_frame = None
@@ -118,6 +123,76 @@ class PageHome(Frame):
         self.search_token_btn.grid(row=3, column=2, sticky='we', padx=(20, 20))
         self.search_top_frame.grid(row=5, column=0, sticky='we')
 
+        self.statistics_frame = Frame(self, width=1920, height=100, bg="white")
+        Label(
+            self.statistics_frame, text="Choose statistics type:", fg='black', bg='white', justify=LEFT,
+            font=('Microsoft YaHei UI Light', 11, 'bold')
+        ).grid(row=0, column=0, sticky="we", padx=(20, 20))
+        self.statistics_var = StringVar()
+        self.statistics_combobox = ttk.Combobox(self.statistics_frame, width=40, textvariable=self.statistics_var,
+                                                values=(STATISTICS_USER, ), state='readonly')
+        self.statistics_combobox.current(0)
+        self.statistics_combobox.grid(row=1, column=0, pady=(20, 0), sticky="we", padx=(20, 20))
+        self.statistics_entry = EntryWithPlaceholder(self.statistics_frame, placeholder='Value')
+        self.statistics_entry.grid(row=2, column=0, sticky="sw", padx=(20, 20), pady=(20, 0))
+        br = Frame(self.statistics_frame, width=400, height=2, bg='black')
+        br.grid(row=3, column=0, sticky="nw", pady=(0, 20), padx=(20, 20))
+        self.show_statistics_btn = Button(
+            self.statistics_frame, width=30, pady=7, text='Show', bg='#57a1f8', fg='white', border=0,
+            font=('Microsoft YaHei UI Light', 11, 'bold'), command=lambda: self.show_statistics()
+        )
+        self.show_statistics_btn.grid(row=4, column=0, sticky='we', padx=(20, 20))
+        self.statistics_frame.grid(row=7, column=0, sticky='we')
+
+        self.user_statistics_frame = Frame(self.statistics_frame, width=1920, height=200, bg="white")
+        Label(
+            self.user_statistics_frame, text="Income", fg='black', bg='white', justify=CENTER,
+            font=('Microsoft YaHei UI Light', 11, 'bold')
+        ).grid(row=0, column=0, sticky="we", padx=(20, 20), pady=(20, 20))
+        Label(
+            self.user_statistics_frame, text="Spending", fg='black', bg='white', justify=CENTER,
+            font=('Microsoft YaHei UI Light', 11, 'bold')
+        ).grid(row=0, column=1, sticky="we", padx=(20, 20), pady=(20, 20))
+        Label(
+            self.user_statistics_frame, text="Deals", fg='black', bg='white', justify=CENTER,
+            font=('Microsoft YaHei UI Light', 11, 'bold')
+        ).grid(row=0, column=2, sticky="we", padx=(20, 20), pady=(20, 20))
+        Label(
+            self.user_statistics_frame, text="Tokens", fg='black', bg='white', justify=CENTER,
+            font=('Microsoft YaHei UI Light', 11, 'bold')
+        ).grid(row=0, column=3, sticky="we", padx=(20, 20), pady=(20, 20))
+        Label(
+            self.user_statistics_frame, text="Collections", fg='black', bg='white', justify=CENTER,
+            font=('Microsoft YaHei UI Light', 11, 'bold')
+        ).grid(row=0, column=4, sticky="we", padx=(20, 20), pady=(20, 20))
+
+        self.user_statistics_income = Label(
+            self.user_statistics_frame, text="Income", fg='black', bg='white', justify=CENTER,
+            font=('Microsoft YaHei UI Light', 11, 'bold')
+        )
+        self.user_statistics_income.grid(row=1, column=0, sticky="we", padx=(20, 20), pady=(20, 20))
+        self.user_statistics_spending = Label(
+            self.user_statistics_frame, text="Spending", fg='black', bg='white', justify=CENTER,
+            font=('Microsoft YaHei UI Light', 11, 'bold')
+        )
+        self.user_statistics_spending.grid(row=1, column=1, sticky="we", padx=(20, 20), pady=(20, 20))
+        self.user_statistics_deals = Label(
+            self.user_statistics_frame, text="Deals", fg='black', bg='white', justify=CENTER,
+            font=('Microsoft YaHei UI Light', 11, 'bold')
+        )
+        self.user_statistics_deals.grid(row=1, column=2, sticky="we", padx=(20, 20), pady=(20, 20))
+        self.user_statistics_tokens = Label(
+            self.user_statistics_frame, text="Tokens", fg='black', bg='white', justify=CENTER,
+            font=('Microsoft YaHei UI Light', 11, 'bold')
+        )
+        self.user_statistics_tokens.grid(row=1, column=3, sticky="we", padx=(20, 20), pady=(20, 20))
+        self.user_statistics_collections = Label(
+            self.user_statistics_frame, text="Collections", fg='black', bg='white', justify=CENTER,
+            font=('Microsoft YaHei UI Light', 11, 'bold')
+        )
+        self.user_statistics_collections.grid(row=1, column=4, sticky="we", padx=(20, 20), pady=(20, 20))
+        self.user_statistics_frame.grid(row=5, column=0, sticky='we')
+
     def load(self):
         self.controller.geometry("1920x1080+0+0")
         self.controller.state('zoomed')
@@ -152,6 +227,32 @@ class PageHome(Frame):
     def show_search_tab(self):
         self.remove_elements()
         self.search_top_frame.grid()
+
+    def show_statistics_tab(self):
+        self.remove_elements()
+        self.statistics_frame.grid()
+        self.statistics_combobox.current(0)
+        self.statistics_entry.set_text(self.username)
+        self.show_statistics()
+
+    def show_statistics(self):
+        stat = self.statistics_var.get()
+        is_admin = connection.is_admin(self.username)
+        if not is_admin:
+            self.statistics_entry.configure(state=DISABLED)
+            self.statistics_combobox.configure(stat=DISABLED)
+        if stat == STATISTICS_USER:
+            self.user_statistics_frame.grid()
+            self.load_statistics_user()
+
+    def load_statistics_user(self):
+        user_name = self.statistics_entry.get_text()
+        rs = connection.get_user_statistics(user_name)
+        self.user_statistics_income.configure(text=rs[0])
+        self.user_statistics_spending.configure(text=rs[1])
+        self.user_statistics_deals.configure(text=rs[2])
+        self.user_statistics_tokens.configure(text=rs[3])
+        self.user_statistics_collections.configure(text=rs[4])
 
     def load_deals(self, *args):
         self.remove_elements()
@@ -201,6 +302,7 @@ class PageHome(Frame):
         self.search_top_frame.grid_remove()
         if self.results is not None:
             self.results.grid_remove()
+        self.statistics_frame.grid_remove()
 
     def search_by_name(self):
         self.show_search_tab()

@@ -81,6 +81,9 @@ class Connection:
                     var_consumer_id,
                     :image
                 );
+                
+                INSERT INTO consumer_statistics (consumer_id) VALUES (var_consumer_id);
+                
                 COMMIT;
             
             END;
@@ -176,17 +179,27 @@ class Connection:
             """, (username,))
         else:
             return self.cursor.execute("""
-                SELECT cda.coin_deal_archive_id, td.value, currency.name, td.year, td.image_obverse, cda.price,
-                        cda.date_end, ccc.name
+                (SELECT cda.coin_deal_archive_id, td.value, currency.name, td.year, td.image_obverse, cda.price,
+                        cda.date_end, c.name name1, ccc.name name2
                 from  consumer c
                 inner join coin_deal_archive cda on cda.seller_id = c.consumer_id
-                inner join coin on coin.coin_id = cda.coin_id
-                inner join token_details td on td.token_details_id = coin.token_details_id
-                inner join currency on currency.currency_id = td.currency_id
+                left join coin on coin.coin_id = cda.coin_id
+                left join token_details td on td.token_details_id = coin.token_details_id
+                left join currency on currency.currency_id = td.currency_id
                 inner join consumer ccc on ccc.consumer_id = cda.buyer_id
-                where c.name = :username
-                order by cda.date_end desc
-            """, (username,))
+                where c.name = :username)
+                UNION ALL
+                (SELECT cda.coin_deal_archive_id, td.value, currency.name, td.year, td.image_obverse, cda.price,
+                        cda.date_end, ccc.name name1, c.name name2
+                from  consumer c
+                inner join coin_deal_archive cda on cda.buyer_id = c.consumer_id
+                left join coin on coin.coin_id = cda.coin_id
+                left join token_details td on td.token_details_id = coin.token_details_id
+                left join currency on currency.currency_id = td.currency_id
+                inner join consumer ccc on ccc.consumer_id = cda.seller_id
+                where c.name = :username)
+                order by date_end desc
+            """, (username, username))
 
     def get_user_deals_banknote_preview(self, username, active):
         if active:
@@ -202,16 +215,26 @@ class Connection:
             """, (username,))
         else:
             return self.cursor.execute("""
-                SELECT bda.banknote_deal_archive_id, td.value, currency.name, td.year, td.image_obverse, bda.price,
-                        bda.date_end, ccc.name
+                (SELECT bda.banknote_deal_archive_id, td.value, currency.name, td.year, td.image_obverse, bda.price,
+                        bda.date_end, c.name name1, ccc.name name2
                 from  consumer c
                 inner join banknote_deal_archive bda on bda.seller_id = c.consumer_id
-                inner join banknote on banknote.banknote_id = bda.banknote_id
-                inner join token_details td on td.token_details_id = banknote.token_details_id
-                inner join currency on currency.currency_id = td.currency_id
+                left join banknote on banknote.banknote_id = bda.banknote_id
+                left join token_details td on td.token_details_id = banknote.token_details_id
+                left join currency on currency.currency_id = td.currency_id
                 inner join consumer ccc on ccc.consumer_id = bda.buyer_id
-                where c.name = :username
-                order by bda.date_end desc
+                where c.name = :username)
+                UNION ALL
+                (SELECT bda.banknote_deal_archive_id, td.value, currency.name, td.year, td.image_obverse, bda.price,
+                        bda.date_end, ccc.name name1, c.name name2
+                from  consumer c
+                inner join banknote_deal_archive bda on bda.buyer_id = c.consumer_id
+                left join banknote on banknote.banknote_id = bda.banknote_id
+                left join token_details td on td.token_details_id = banknote.token_details_id
+                left join currency on currency.currency_id = td.currency_id
+                inner join consumer ccc on ccc.consumer_id = bda.seller_id
+                where c.name = :username)
+                order by date_end desc
             """, (username,))
 
     def get_token_types(self):
@@ -239,6 +262,8 @@ class Connection:
                 var_coin_id                 NUMBER;
                 var_previous_collection_id  NUMBER := :var_previous_collection_id;
                 var_collection_id           NUMBER;
+                var_tokens                  NUMBER;
+                var_consumer_id             NUMBER;
             BEGIN
                 SELECT
                     token_type_id
@@ -314,8 +339,8 @@ class Connection:
                 ) RETURNING coin_id INTO var_coin_id;
                 
                 SELECT
-                    coll.collection_id
-                INTO var_collection_id
+                    coll.collection_id, coll.consumer_id
+                INTO var_collection_id, var_consumer_id
                 FROM
                     collection coll
                     inner join collection coll2 on coll2.consumer_id = coll.consumer_id
@@ -330,6 +355,15 @@ class Connection:
                     var_coin_id,
                     var_collection_id
                 );
+                
+                SELECT tokens INTO var_tokens FROM consumer_statistics
+                where consumer_id = var_consumer_id;
+                
+                var_tokens := var_tokens + 1;
+                
+                UPDATE consumer_statistics
+                SET tokens = var_tokens
+                WHERE consumer_id = var_consumer_id;
                 
                 COMMIT;
             END;
@@ -349,6 +383,8 @@ class Connection:
                 var_banknote_id          NUMBER;
                 var_previous_collection_id  NUMBER := :var_previous_collection_id;
                 var_collection_id    NUMBER;
+                var_tokens                  NUMBER;
+                var_consumer_id             NUMBER;
             BEGIN
                 SELECT
                     token_type_id
@@ -414,8 +450,8 @@ class Connection:
                 ) RETURNING banknote_id INTO var_banknote_id;
 
                 SELECT
-                    coll.collection_id
-                INTO var_collection_id
+                    coll.collection_id, coll.consumer_id
+                INTO var_collection_id, var_consumer_id
                 FROM
                     collection coll
                     inner join collection coll2 on coll2.consumer_id = coll.consumer_id
@@ -430,6 +466,15 @@ class Connection:
                     var_banknote_id,
                     var_collection_id
                 );
+                
+                SELECT tokens INTO var_tokens FROM consumer_statistics
+                where consumer_id = var_consumer_id;
+                
+                var_tokens := var_tokens + 1;
+                
+                UPDATE consumer_statistics
+                SET tokens = var_tokens
+                WHERE consumer_id = var_consumer_id;
 
                 COMMIT;
             END;
@@ -688,7 +733,7 @@ class Connection:
             END;
             ''', (collection_id, banknote_id, token_type, material, currency_name, currency_country, value, year, image_obverse,
                   image_reverse, description, subject, width, height, collection_name)
-                            )
+        )
 
     def delete_coin(self, coin_id):
         self.cursor.execute('''
@@ -696,6 +741,8 @@ class Connection:
                 var_coin_id          NUMBER := :coin_id;
                 var_token_details_id NUMBER;
                 var_coin_details_id  NUMBER;
+                var_tokens           NUMBER;
+                var_consumer_id      NUMBER;
             BEGIN
                 SELECT
                     token_details_id,
@@ -707,11 +754,27 @@ class Connection:
                     coin
                 WHERE
                     coin_id = var_coin_id;
+                    
+                SELECT cs.tokens, cs.consumer_id INTO var_tokens, var_consumer_id FROM consumer_statistics cs
+                inner join consumer c on c.consumer_id = cs.consumer_id
+                inner join collection coll on coll.consumer_id = c.consumer_id
+                inner join collection_coin cc on cc.collection_id = coll.collection_id
+                where cc.coin_id = var_coin_id;
+                
+                var_tokens := var_tokens - 1;
+                
+                UPDATE consumer_statistics
+                SET tokens = var_tokens
+                WHERE consumer_id = var_consumer_id;
             
                 DELETE FROM collection_coin
                 WHERE
                     coin_id = var_coin_id;
             
+                UPDATE coin_deal_archive
+                SET coin_id = NULL
+                where coin_id = var_coin_id;
+                
                 DELETE FROM coin
                 WHERE
                     coin_id = var_coin_id;
@@ -735,6 +798,8 @@ class Connection:
                 var_banknote_id          NUMBER := :banknote_id;
                 var_token_details_id     NUMBER;
                 var_banknote_details_id  NUMBER;
+                var_tokens               NUMBER;
+                var_consumer_id          NUMBER;
             BEGIN
                 SELECT
                     token_details_id,
@@ -746,10 +811,26 @@ class Connection:
                     banknote
                 WHERE
                     banknote_id = var_banknote_id;
+                    
+                SELECT cs.tokens, cs.consumer_id INTO var_tokens, var_consumer_id FROM consumer_statistics cs
+                inner join consumer c on c.consumer_id = cs.consumer_id
+                inner join collection coll on coll.consumer_id = c.consumer_id
+                inner join collection_banknote cb on cb.collection_id = coll.collection_id
+                where cb.banknote_id = var_banknote_id;
+                
+                var_tokens := var_tokens - 1;
+                
+                UPDATE consumer_statistics
+                SET tokens = var_tokens
+                WHERE consumer_id = var_consumer_id;
 
                 DELETE FROM collection_banknote
                 WHERE
                     banknote_id = var_banknote_id;
+                    
+                UPDATE banknote_deal_archive
+                SET banknote_id = NULL
+                where banknote_id = var_banknote_id;
 
                 DELETE FROM banknote
                 WHERE
@@ -770,11 +851,28 @@ class Connection:
 
     def create_collection(self, username, collection_name, description, image):
         self.cursor.execute('''
-            insert into collection (name, consumer_id, description, image) 
-            values (
-                :collection_name, (select c.consumer_id from consumer c where c.name = :username), :description, :image
-            )
-            ''', (collection_name, username, description, image)
+            DECLARE
+                var_collections             NUMBER;
+                var_consumer_id             NUMBER;
+            BEGIN
+                select c.consumer_id into var_consumer_id from consumer c where c.name = :username;
+                
+                select collections into var_collections
+                from consumer_statistics
+                where consumer_id = var_consumer_id;
+                
+                var_collections := var_collections + 1;
+                
+                UPDATE consumer_statistics
+                SET collections = var_collections
+                WHERE consumer_id = var_consumer_id;
+                
+                insert into collection (name, consumer_id, description, image) 
+                values (
+                    :collection_name, var_consumer_id, :description, :image
+                );
+            END;
+            ''', (username, collection_name, description, image)
         )
         self.connection.commit()
 
@@ -805,6 +903,11 @@ class Connection:
             return False
         self.cursor.execute('''
             DECLARE
+                var_tokens NUMBER;
+                var_consumer_id NUMBER;
+                var_collection_id NUMBER := :collection_id;
+                var_collections NUMBER;
+            
                 CURSOR coins IS
                 SELECT
                     c.coin_id,
@@ -815,10 +918,41 @@ class Connection:
                     INNER JOIN collection_coin cc ON cc.coin_id = c.coin_id
                     INNER JOIN collection      coll ON coll.collection_id = cc.collection_id
                 WHERE
-                    coll.collection_id = :collection_id;
+                    coll.collection_id = var_collection_id;
+                    
+                CURSOR banknotes IS
+                SELECT
+                    b.banknote_id,
+                    b.token_details_id,
+                    b.banknote_details_id
+                FROM
+                         banknote b
+                    INNER JOIN collection_banknote cb ON cb.banknote_id = b.banknote_id
+                    INNER JOIN collection      coll ON coll.collection_id = cb.collection_id
+                WHERE
+                    coll.collection_id = var_collection_id;    
             
             BEGIN
+                SELECT consumer_id into var_consumer_id from collection where collection_id = var_collection_id;
+            
                 FOR record IN coins LOOP
+                
+                    SELECT cs.tokens INTO var_tokens FROM consumer_statistics cs
+                    inner join consumer c on c.consumer_id = cs.consumer_id
+                    inner join collection coll on coll.consumer_id = c.consumer_id
+                    inner join collection_coin cc on cc.collection_id = coll.collection_id
+                    where cc.coin_id = record.coin_id;
+                    
+                    var_tokens := var_tokens - 1;
+                    
+                    UPDATE consumer_statistics
+                    SET tokens = var_tokens
+                    WHERE consumer_id = var_consumer_id;
+                
+                    UPDATE coin_deal_archive
+                    SET coin_id = NULL
+                    where coin_id = record.coin_id;
+                    
                     DELETE FROM collection_coin
                     WHERE
                         coin_id = record.coin_id;
@@ -836,6 +970,52 @@ class Connection:
                         coin_details_id = record.coin_details_id;
             
                 END LOOP;
+                
+                FOR record IN banknotes LOOP
+                
+                    SELECT cs.tokens INTO var_tokens FROM consumer_statistics cs
+                    inner join consumer c on c.consumer_id = cs.consumer_id
+                    inner join collection coll on coll.consumer_id = c.consumer_id
+                    inner join collection_banknote cb on cb.collection_id = coll.collection_id
+                    where cb.banknote_id = record.banknote_id;
+                    
+                    var_tokens := var_tokens - 1;
+                    
+                    UPDATE consumer_statistics
+                    SET tokens = var_tokens
+                    WHERE consumer_id = var_consumer_id;
+                
+                    UPDATE banknote_deal_archive
+                    SET banknote_id = NULL
+                    where banknote_id = record.banknote_id;
+                    
+                    DELETE FROM collection_banknote
+                    WHERE
+                        banknote_id = record.banknote_id;
+            
+                    DELETE FROM banknote
+                    WHERE
+                        banknote_id = record.banknote_id;
+            
+                    DELETE FROM token_details
+                    WHERE
+                        token_details_id = record.token_details_id;
+            
+                    DELETE FROM banknote_details
+                    WHERE
+                        banknote_details_id = record.banknote_details_id;
+            
+                END LOOP;
+                
+                select collections into var_collections
+                from consumer_statistics
+                where consumer_id = var_consumer_id;
+                
+                var_collections := var_collections - 1;
+                
+                UPDATE consumer_statistics
+                SET collections = var_collections
+                WHERE consumer_id = var_consumer_id;
             
                 DELETE FROM collection
                 WHERE
@@ -1117,6 +1297,10 @@ class Connection:
                 var_deal_type_id    NUMBER;
                 var_coin_deal_id    NUMBER;
                 var_collection_id   NUMBER;
+                var_income          NUMBER;
+                var_spending        NUMBER;
+                var_deals           NUMBER;
+                var_tokens          NUMBER;
             BEGIN
                 SELECT
                     *
@@ -1156,6 +1340,34 @@ class Connection:
                 UPDATE collection_coin
                 SET collection_id = var_collection_id
                 WHERE coin_id = var_coin_id;
+                
+                SELECT income, deals, tokens INTO var_income, var_deals, var_tokens
+                FROM consumer_statistics
+                WHERE consumer_id = var_seller_id;
+                
+                var_income := var_income + var_price;
+                var_deals := var_deals + 1;
+                var_tokens := var_tokens - 1;
+                
+                UPDATE consumer_statistics SET
+                income = var_income,
+                deals = var_deals,
+                tokens = var_tokens
+                WHERE consumer_id = var_seller_id;
+                
+                SELECT spending, deals, tokens INTO var_spending, var_deals, var_tokens
+                FROM consumer_statistics
+                WHERE consumer_id = var_buyer_id;
+                
+                var_spending := var_spending + var_price;
+                var_deals := var_deals + 1;
+                var_tokens := var_tokens + 1;
+                
+                UPDATE consumer_statistics SET
+                spending = var_spending,
+                deals = var_deals,
+                tokens = var_tokens
+                WHERE consumer_id = var_buyer_id;
                     
                 commit;
             END;
@@ -1172,6 +1384,10 @@ class Connection:
                 var_deal_type_id        NUMBER;
                 var_banknote_deal_id    NUMBER;
                 var_collection_id       NUMBER;
+                var_income          NUMBER;
+                var_spending        NUMBER;
+                var_deals           NUMBER;
+                var_tokens          NUMBER;
             BEGIN
                 SELECT
                     *
@@ -1213,6 +1429,34 @@ class Connection:
                 UPDATE collection_banknote
                 SET collection_id = var_collection_id
                 WHERE banknote_id = var_banknote_id;
+                
+                                SELECT income, deals, tokens INTO var_income, var_deals, var_tokens
+                FROM consumer_statistics
+                WHERE consumer_id = var_seller_id;
+                
+                var_income := var_income + var_price;
+                var_deals := var_deals + 1;
+                var_tokens := var_tokens - 1;
+                
+                UPDATE consumer_statistics SET
+                income = var_income,
+                deals = var_deals,
+                tokens = var_tokens
+                WHERE consumer_id = var_seller_id;
+                
+                SELECT spending, deals, tokens INTO var_spending, var_deals, var_tokens
+                FROM consumer_statistics
+                WHERE consumer_id = var_buyer_id;
+                
+                var_spending := var_spending + var_price;
+                var_deals := var_deals + 1;
+                var_tokens := var_tokens + 1;
+                
+                UPDATE consumer_statistics SET
+                spending = var_spending,
+                deals = var_deals,
+                tokens = var_tokens
+                WHERE consumer_id = var_buyer_id;
 
                 commit;
             END;
@@ -1486,6 +1730,21 @@ class Connection:
             inner join banknote_deal bd on bd.deal_type_id = dt.deal_type_id
             where bd.banknote_id = :banknote_id
         ''', (banknote_id, )).fetchone()[0]
+
+    def is_admin(self, username):
+        return self.cursor.execute('''
+            select is_admin
+            from consumer
+            where name = :username
+        ''', (username, )).fetchone()[0]
+
+    def get_user_statistics(self, username):
+        return self.cursor.execute('''
+            select cs.income, cs.spending, cs.deals, cs.tokens, cs.collections
+            from consumer_statistics cs
+            inner join consumer c on c.consumer_id = cs.consumer_id
+            where c.name = :username
+        ''', (username,)).fetchone()
 
 
 connection = Connection()

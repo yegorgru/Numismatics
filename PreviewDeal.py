@@ -11,11 +11,16 @@ class PreviewDeal:
         self.is_active = is_active
         self.id = deal[0]
         self.is_coin = is_coin
+        if deal[1] is None:
+            heading = 'Token was deleted by owner'
+        else:
+            heading = str(deal[1]) + ' ' + deal[2] + ', ' + str(deal[3])
         self.text_columns = [
-            str(deal[1]) + ' ' + deal[2] + ', ' + str(deal[3]), str(deal[5]) + ' $', 'Date: ' + str(deal[6])
+            heading, str(deal[5]) + ' $', 'Date: ' + str(deal[6])
         ]
         if not is_active:
-            self.text_columns.append('Buyer: ' + deal[7])
+            self.text_columns.append('Seller: ' + deal[7])
+            self.text_columns.append('Buyer: ' + deal[8])
         if deal[4] is None:
             self.image = Image.open(PATH_IMAGE_EMPTY)
         else:

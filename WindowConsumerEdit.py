@@ -31,7 +31,7 @@ class WindowConsumerEdit(Toplevel):
         br = Frame(self, width=400, height=2, bg='black')
         br.grid(row=2, column=1, sticky="w", pady=(0, 20))
 
-        self.email_entry = EntryWithPlaceholder(self, "Email")
+        self.email_entry = EntryWithPlaceholder(self, "Email", width=30)
         self.email_entry.grid(row=3, column=1, sticky="w", pady=(20, 0))
         br2 = Frame(self, width=400, height=2, bg='black')
         br2.grid(row=4, column=1, sticky="w", pady=(0, 20))

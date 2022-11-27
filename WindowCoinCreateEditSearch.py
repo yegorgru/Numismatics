@@ -2,7 +2,7 @@ from tkinter import *
 from tkinter import ttk
 from PIL import Image, ImageTk
 from tkinter.messagebox import askyesno
-from tkinter.messagebox import showinfo
+from tkinter.messagebox import showinfo, showwarning
 
 from GUI.EntryWithPlaceholder import EntryWithPlaceholder
 from GUI.TextWithPlaceholder import TextWithPlaceholder
@@ -15,11 +15,12 @@ from WindowCoinDeal import WindowCoinDeal
 
 
 class WindowCoinCreateEditSearch(Toplevel):
-    def __init__(self, controller, window_mode, coin_id=None):
+    def __init__(self, controller, window_mode, coin_id=None, offer_username=None):
         Toplevel.__init__(self)
         self.mode = window_mode
         self.controller = controller
         self.collection_id = None
+        self.offer_username = offer_username
         if self.mode != WindowMode.SEARCH_RESULT and self.mode != WindowMode.SEARCH:
             self.collection_id = controller.collection_id
         self.coin_id = coin_id
@@ -153,11 +154,16 @@ class WindowCoinCreateEditSearch(Toplevel):
         self.amount_entry.grid(row=0, column=1, sticky="w", pady=(20, 0))
         br99 = Frame(self.frame_btn_sale, width=400, height=2, bg='black')
         br99.grid(row=1, column=1, sticky="w", pady=(0, 20))
+        self.refresh_btn = Button(
+            self.frame_btn_sale, width=30, pady=7, text='Refresh', bg='#57a1f8', fg='white', border=0,
+            font=('Microsoft YaHei UI Light', 11, 'bold'), command=lambda: self.refresh_deal_amount()
+        )
+        self.refresh_btn.grid(row=2, column=1, sticky="w", pady=(20, 20))
         self.make_offer_btn = Button(
             self.frame_btn_sale, width=30, pady=7, text='Make offer', bg='#57a1f8', fg='white', border=0,
             font=('Microsoft YaHei UI Light', 11, 'bold'), command=lambda: self.make_offer()
         )
-        self.make_offer_btn.grid(row=2, column=1, sticky="w", pady=(20, 20))
+        self.make_offer_btn.grid(row=3, column=1, sticky="w", pady=(20, 20))
         self.frame_btn_sale.grid_columnconfigure(0, weight=1)
         self.frame_btn_sale.grid_columnconfigure(2, weight=1)
         self.frame_btn_sale.grid_remove()
@@ -265,7 +271,7 @@ class WindowCoinCreateEditSearch(Toplevel):
                                    year=year, token_type=type_name, material=material,
                                    image_obverse=self.image_value_obverse, image_reverse=self.image_value_reverse,
                                    description=description, subject=subject, diameter=diameter, weight=weight,
-                                   edge=edge, collection_name=collection_name)
+                                   edge=edge, collection_name=collection_name, collection_id=self.collection_id)
             self.controller.load_coins()
             self.destroy()
         elif self.mode == WindowMode.EDIT:
@@ -273,7 +279,8 @@ class WindowCoinCreateEditSearch(Toplevel):
                                    year=year, token_type=type_name, material=material,
                                    image_obverse=self.image_value_obverse, image_reverse=self.image_value_reverse,
                                    description=description, subject=subject, diameter=diameter, weight=weight,
-                                   edge=edge, coin_id=self.coin_id, collection_name=collection_name)
+                                   edge=edge, coin_id=self.coin_id, collection_name=collection_name,
+                                   collection_id=self.collection_id)
             self.set_mode(WindowMode.VIEW)
         elif self.mode == WindowMode.SEARCH:
             rs = connection.search_coins_by_details(
@@ -410,6 +417,7 @@ class WindowCoinCreateEditSearch(Toplevel):
             self.set_enable_state(False)
             if self.sale_possible:
                 self.frame_btn_sale.grid()
+                self.refresh_deal_amount()
         elif self.mode == WindowMode.SEARCH:
             self.frame_btn.grid_remove()
             self.coin_image_obverse.grid_remove()
@@ -419,10 +427,23 @@ class WindowCoinCreateEditSearch(Toplevel):
 
     def refresh_deal_amount(self):
         self.amount_entry.set_text(str(connection.refresh_deal_value(self.coin_id)))
+        if connection.get_deal_type(self.coin_id) == 'Sale':
+            self.amount_entry.configure(state=DISABLED)
+            self.refresh_btn.grid_remove()
 
     def make_offer(self):
-        print('#')
-
+        try:
+            amount = int(self.amount_entry.get_text())
+        except ValueError:
+            self.refresh_deal_amount()
+            return
+        code = connection.make_offer(self.coin_id, amount, self.offer_username)
+        if code == MakeOfferCode.SAME_CONSUMER:
+            showwarning("Warning", "You can't make offer for your token")
+        elif code == MakeOfferCode.SMALL_PRICE:
+            showwarning("Warning", "Amount is too small")
+        elif code == MakeOfferCode.SUCCESS:
+            showinfo("Information", "Offer created successfully")
 
 
 

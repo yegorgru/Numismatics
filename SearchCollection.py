@@ -18,4 +18,4 @@ class SearchCollection:
             self.image = Image.open(pre_img)
 
     def click_action(self):
-        self.controller.load_search_banknotes(self.id)
+        self.controller.load_search_collection(self.id)

@@ -78,7 +78,8 @@ class PageCollection(Frame):
         info = connection.get_collection(collection_id=self.collection_id)
         self.collection_name.configure(text=info[0])
 
-        self.collection_description.configure(text=textwrap.fill(info[1], 60))
+        if info[1] is not None:
+            self.collection_description.configure(text=textwrap.fill(info[1], 60))
 
         if info[2] is None:
             self.collection_image = Image.open(PATH_IMAGE_EMPTY)

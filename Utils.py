@@ -46,4 +46,4 @@ def get_general_image_bytes():
     file = open(PATH_IMAGE_COLLECTION_GENERAL, 'rb')
     file = io.BytesIO(file.read())
     file.seek(0, os.SEEK_END)
-    image_value = file.getvalue()
+    return file.getvalue()

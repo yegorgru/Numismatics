@@ -5,15 +5,6 @@ from Definitions import *
 
 
 class PageRegistration(Frame):
-    def register(self):
-        register_code = connection.create_user(
-            self.username_entry.get(), self.email_entry.get(), self.password_entry.get()
-        )
-        print(register_code)
-
-    def load(self):
-        print("Register page loaded")
-
     def __init__(self, parent, controller):
         Frame.__init__(self, parent, bg="white")
         self.controller = controller
@@ -31,7 +22,7 @@ class PageRegistration(Frame):
         self.username_entry.place(x=30, y=70)
         Frame(frame, width=315, height=2, bg='black').place(x=25, y=97)
 
-        self.email_entry = EntryWithPlaceholder(frame, "email")
+        self.email_entry = EntryWithPlaceholder(frame, "email", width=30)
         self.email_entry.place(x=30, y=130)
         Frame(frame, width=315, height=2, bg='black').place(x=25, y=157)
 
@@ -55,3 +46,12 @@ class PageRegistration(Frame):
             command=lambda: controller.show_frame("PageLogin")
         )
         self.login_btn.place(x=230, y=310)
+
+    def register(self):
+        register_code = connection.create_user(
+            self.username_entry.get(), self.email_entry.get(), self.password_entry.get()
+        )
+        print(register_code)
+
+    def load(self):
+        print("Register page loaded")

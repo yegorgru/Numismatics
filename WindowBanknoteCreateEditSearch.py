@@ -249,7 +249,7 @@ class WindowBanknoteCreateEditSearch(Toplevel):
                                        year=year, token_type=type_name, material=material,
                                        image_obverse=self.image_value_obverse, image_reverse=self.image_value_reverse,
                                        description=description, subject=subject, width=width, height=height,
-                                       collection_name=collection_name)
+                                       collection_name=collection_name, collection_id=self.collection_id)
             self.controller.load_banknotes()
             self.destroy()
         elif self.mode == WindowMode.EDIT:
@@ -257,7 +257,8 @@ class WindowBanknoteCreateEditSearch(Toplevel):
                                        year=year, token_type=type_name, material=material,
                                        image_obverse=self.image_value_obverse, image_reverse=self.image_value_reverse,
                                        description=description, subject=subject, width=width, height=height,
-                                       banknote_id=self.banknote_id, collection_name=collection_name)
+                                       banknote_id=self.banknote_id, collection_name=collection_name,
+                                       collection_id=self.collection_id)
             self.set_mode(WindowMode.VIEW)
         elif self.mode == WindowMode.SEARCH:
             rs = connection.search_banknotes_by_details(
@@ -401,7 +402,7 @@ class WindowBanknoteCreateEditSearch(Toplevel):
         self.amount_entry.set_text(str(connection.refresh_deal_value(self.banknote_id)))
 
     def make_offer(self):
-        print('#')
+        amount = self.amount_entry.get_text()
 
 
 

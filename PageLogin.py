@@ -31,7 +31,7 @@ class PageLogin(Frame):
         heading = Label(frame, text='Login', fg='#57a1f8', bg='white', font=('Microsoft YaHei UI Light', 23, 'bold'))
         heading.place(x=100, y=5)
 
-        self.user_entry = EntryWithPlaceholder(frame, "username / email")
+        self.user_entry = EntryWithPlaceholder(frame, "username / email", width=30)
         self.user_entry.place(x=30, y=80)
         Frame(frame, width=315, height=2, bg='black').place(x=25, y=107)
 

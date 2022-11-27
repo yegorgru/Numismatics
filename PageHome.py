@@ -116,7 +116,7 @@ class PageHome(Frame):
             font=('Microsoft YaHei UI Light', 11, 'bold'), command=lambda: self.search_by_details()
         )
         self.search_token_btn.grid(row=3, column=2, sticky='we', padx=(20, 20))
-        self.search_top_frame.grid(row=3, column=0, sticky='we')
+        self.search_top_frame.grid(row=5, column=0, sticky='we')
 
     def load(self):
         self.controller.geometry("1920x1080+0+0")
@@ -156,10 +156,11 @@ class PageHome(Frame):
     def load_deals(self, *args):
         self.remove_elements()
         self.deals_combobox.grid()
-        rs = connection.get_user_deals_preview(self.username, self.deals_var.get() == 'Active deals')
+        is_active = self.deals_var.get() == 'Active deals'
+        rs = connection.get_user_deals_preview(self.username, is_active)
         deals = list()
         for deal in rs:
-            deals.append(PreviewDeal(self, deal))
+            deals.append(PreviewDeal(self, deal, is_active))
 
         self.deals = ListManager(
             self, row_width=200, width=1920, height=750, objects=deals
@@ -192,6 +193,7 @@ class PageHome(Frame):
             self.results.grid_remove()
 
     def search_by_name(self):
+        self.show_search_tab()
         input_name = self.search_entry.get()
         users = connection.search_users(input_name)
         collections = connection.search_collections(input_name)
@@ -204,7 +206,7 @@ class PageHome(Frame):
         self.results = ListManager(
             self, row_width=200, width=1920, height=750, objects=search_results
         )
-        self.results.grid(row=4, column=0, sticky='news', pady=(20, 0))
+        self.results.grid(row=6, column=0, sticky='news', pady=(20, 0))
 
     def search_by_details(self):
         if self.search_token_var.get() == 'Coin':
@@ -214,6 +216,7 @@ class PageHome(Frame):
         window.grab_set()
 
     def load_search_user(self, user_id):
+        self.show_search_tab()
         collections = connection.search_user_collections(user_id)
         search_results = list()
         for coll in collections:
@@ -222,9 +225,10 @@ class PageHome(Frame):
         self.results = ListManager(
             self, row_width=200, width=1920, height=750, objects=search_results
         )
-        self.results.grid(row=4, column=0, sticky='news', pady=(20, 0))
+        self.results.grid(row=6, column=0, sticky='news', pady=(20, 0))
 
-    def load_search_banknotes(self, collection_id):
+    def load_search_collection(self, collection_id):
+        self.show_search_tab()
         coins = connection.search_collection_coins(collection_id)
         search_results = list()
         for coin in coins:
@@ -237,10 +241,11 @@ class PageHome(Frame):
         self.results = ListManager(
             self, row_width=200, width=1920, height=750, objects=search_results
         )
-        self.results.grid(row=4, column=0, sticky='news', pady=(20, 0))
+        self.results.grid(row=6, column=0, sticky='news', pady=(20, 0))
 
     def load_search_coin(self, coin_id):
-        coin_window = WindowCoinCreateEditSearch(self, window_mode=WindowMode.SEARCH_RESULT, coin_id=coin_id)
+        coin_window = WindowCoinCreateEditSearch(self, window_mode=WindowMode.SEARCH_RESULT, coin_id=coin_id,
+                                                 offer_username=self.username)
         coin_window.grab_set()
 
     def load_search_banknote(self, banknote_id):
@@ -249,6 +254,7 @@ class PageHome(Frame):
         banknote_window.grab_set()
 
     def set_search_results(self, rs, is_coins):
+        self.show_search_tab()
         search_results = list()
         for res in rs:
             search_results.append(SearchToken(self, res, is_coin=is_coins))
@@ -256,7 +262,7 @@ class PageHome(Frame):
         self.results = ListManager(
             self, row_width=200, width=1920, height=750, objects=search_results
         )
-        self.results.grid(row=4, column=0, sticky='news', pady=(20, 0))
+        self.results.grid(row=6, column=0, sticky='news', pady=(20, 0))
 
     def edit_user(self, *args):
         window = WindowConsumerEdit(self)

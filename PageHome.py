@@ -7,7 +7,7 @@ from PIL import Image, ImageTk
 from tkinter import ttk
 from PreviewDeal import PreviewDeal
 from GUI.ListManager import ListManager
-from WindowCoinDeal import WindowCoinDeal
+from WindowTokenDeal import WindowTokenDeal
 from GUI.EntryWithPlaceholder import EntryWithPlaceholder
 from SearchUser import SearchUser
 from SearchCollection import SearchCollection
@@ -157,10 +157,13 @@ class PageHome(Frame):
         self.remove_elements()
         self.deals_combobox.grid()
         is_active = self.deals_var.get() == 'Active deals'
-        rs = connection.get_user_deals_preview(self.username, is_active)
+        rs = connection.get_user_deals_coin_preview(self.username, is_active)
         deals = list()
         for deal in rs:
-            deals.append(PreviewDeal(self, deal, is_active))
+            deals.append(PreviewDeal(self, deal, is_active, is_coin=True))
+        rs = connection.get_user_deals_banknote_preview(self.username, is_active)
+        for deal in rs:
+            deals.append(PreviewDeal(self, deal, is_active, is_coin=False))
 
         self.deals = ListManager(
             self, row_width=200, width=1920, height=750, objects=deals
@@ -175,11 +178,18 @@ class PageHome(Frame):
         self.controller.collection_id = collection_id
         self.controller.show_frame("PageCollection")
 
-    def load_deal(self, coin_id):
-        deal_window = WindowCoinDeal(self, coin_id)
+    def load_coin_deal(self, coin_id):
+        deal_window = WindowTokenDeal(self, coin_id, is_coin=True)
         deal_window.grab_set()
 
-    def after_w_coin_deal(self, *args):
+    def load_banknote_deal(self, banknote_id):
+        deal_window = WindowTokenDeal(self, banknote_id, is_coin=False)
+        deal_window.grab_set()
+
+    def after_w_token_deal(self, *args):
+        self.load_deals()
+
+    def after_w_banknote_deal(self, *args):
         self.load_deals()
 
     def remove_elements(self):
@@ -210,9 +220,11 @@ class PageHome(Frame):
 
     def search_by_details(self):
         if self.search_token_var.get() == 'Coin':
-            window = WindowCoinCreateEditSearch(self, window_mode=WindowMode.SEARCH, coin_id=None)
+            window = WindowCoinCreateEditSearch(self, window_mode=WindowMode.SEARCH, coin_id=None,
+                                                offer_username=self.username)
         else:
-            window = WindowBanknoteCreateEditSearch(self, window_mode=WindowMode.SEARCH, banknote_id=None)
+            window = WindowBanknoteCreateEditSearch(self, window_mode=WindowMode.SEARCH, banknote_id=None,
+                                                    offer_username=self.username)
         window.grab_set()
 
     def load_search_user(self, user_id):
@@ -250,7 +262,7 @@ class PageHome(Frame):
 
     def load_search_banknote(self, banknote_id):
         banknote_window = WindowBanknoteCreateEditSearch(self, window_mode=WindowMode.SEARCH_RESULT,
-                                                         banknote_id=banknote_id)
+                                                         banknote_id=banknote_id, offer_username=self.username)
         banknote_window.grab_set()
 
     def set_search_results(self, rs, is_coins):

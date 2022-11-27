@@ -17,6 +17,10 @@ class SearchToken:
         self.text_columns = [
             str(token[1]) + ' ' + token[2] + ', ' + str(token[3]), 'Subject: ' + subj, 'Owner: ' + token[5]
         ]
+        if token[7] is not None:
+            self.text_columns.append('ON SALE')
+        else:
+            self.text_columns.append('NOT ON SALE')
         if token[6] is None:
             self.image = Image.open(PATH_IMAGE_EMPTY_PROFILE)
         else:

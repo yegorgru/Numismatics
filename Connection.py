@@ -162,7 +162,7 @@ class Connection:
             where c.collection_id = :collection_id
         """, (collection_id,))
 
-    def get_user_deals_preview(self, username, active):
+    def get_user_deals_coin_preview(self, username, active):
         if active:
             return self.cursor.execute("""
                 SELECT coin.coin_id, td.value, currency.name, td.year, td.image_obverse, cd.price, cd.date_begin
@@ -186,6 +186,32 @@ class Connection:
                 inner join consumer ccc on ccc.consumer_id = cda.buyer_id
                 where c.name = :username
                 order by cda.date_end desc
+            """, (username,))
+
+    def get_user_deals_banknote_preview(self, username, active):
+        if active:
+            return self.cursor.execute("""
+                SELECT banknote.banknote_id, td.value, currency.name, td.year, td.image_obverse, bd.price, bd.date_begin
+                from  consumer c
+                inner join banknote_deal bd on bd.seller_id = c.consumer_id
+                inner join banknote on banknote.banknote_id = bd.banknote_id
+                inner join token_details td on td.token_details_id = banknote.token_details_id
+                inner join currency on currency.currency_id = td.currency_id
+                where c.name = :username
+                order by bd.date_begin desc
+            """, (username,))
+        else:
+            return self.cursor.execute("""
+                SELECT bda.banknote_deal_archive_id, td.value, currency.name, td.year, td.image_obverse, bda.price,
+                        bda.date_end, ccc.name
+                from  consumer c
+                inner join banknote_deal_archive bda on bda.seller_id = c.consumer_id
+                inner join banknote on banknote.banknote_id = bda.banknote_id
+                inner join token_details td on td.token_details_id = banknote.token_details_id
+                inner join currency on currency.currency_id = td.currency_id
+                inner join consumer ccc on ccc.consumer_id = bda.buyer_id
+                where c.name = :username
+                order by bda.date_end desc
             """, (username,))
 
     def get_token_types(self):
@@ -782,7 +808,7 @@ class Connection:
         )
         return True
 
-    def create_deal(self, coin_id, price, deal_type):
+    def create_coin_deal(self, coin_id, price, deal_type):
         self.cursor.execute('''
             DECLARE
                 var_seller_id       NUMBER;
@@ -824,7 +850,49 @@ class Connection:
             ''', (coin_id, deal_type, price)
         )
 
-    def cancel_deal(self, coin_id):
+    def create_banknote_deal(self, banknote_id, price, deal_type):
+        self.cursor.execute('''
+            DECLARE
+                var_seller_id       NUMBER;
+                var_banknote_id     NUMBER := :banknote_id;
+                var_deal_type_id    NUMBER;
+            BEGIN
+                SELECT
+                    c.consumer_id
+                INTO var_seller_id
+                FROM
+                         consumer c
+                    INNER JOIN collection      coll ON c.consumer_id = coll.consumer_id
+                    INNER JOIN collection_banknote cb ON cb.collection_id = coll.collection_id
+                WHERE
+                    cb.banknote_id = var_banknote_id;
+
+                SELECT 
+                    deal_type_id
+                INTO var_deal_type_id
+                FROM 
+                    deal_type
+                WHERE 
+                    type = :deal_type;
+
+                INSERT INTO banknote_deal (
+                    banknote_id,
+                    seller_id,
+                    price,
+                    deal_type_id
+                ) VALUES (
+                    var_banknote_id,
+                    var_seller_id,
+                    :price,
+                    var_deal_type_id
+                );
+
+                COMMIT;
+            END;
+            ''', (banknote_id, deal_type, price)
+        )
+
+    def cancel_coin_deal(self, coin_id):
         self.cursor.execute('''
             DECLARE 
                 var_coin_id NUMBER := :coin_id;
@@ -841,7 +909,24 @@ class Connection:
             ''', (coin_id, )
         )
 
-    def get_deal_details(self, coin_id):
+    def cancel_banknote_deal(self, banknote_id):
+        self.cursor.execute('''
+            DECLARE 
+                var_banknote_id NUMBER := :banknote_id;
+            BEGIN
+                DELETE(
+                    SELECT * FROM banknote_lot bl
+                    inner join banknote_deal bd ON bd.banknote_deal_id = bl.banknote_deal_id
+                    where bd.banknote_id = var_banknote_id
+                );
+                DELETE FROM banknote_deal bd
+                WHERE bd.banknote_id = var_banknote_id;
+                COMMIT;
+            END;
+            ''', (banknote_id, )
+        )
+
+    def get_deal_coin_details(self, coin_id):
         deal_type = self.cursor.execute("""
             select type from deal_type dt
             inner join coin_deal cd on cd.deal_type_id = dt.deal_type_id
@@ -879,7 +964,45 @@ class Connection:
                     ROWNUM = 1
             """, (coin_id,)).fetchone()
 
-    def refresh_deal_value(self, coin_id):
+    def get_deal_banknote_details(self, banknote_id):
+        deal_type = self.cursor.execute("""
+            select type from deal_type dt
+            inner join banknote_deal bd on bd.deal_type_id = dt.deal_type_id
+            where bd.banknote_id = :banknote_id
+        """, (banknote_id,)).fetchone()[0]
+        if deal_type == 'Sale':
+            return self.cursor.execute("""
+                select c.image, c.name, bd.price
+                FROM banknote_lot bl
+                inner join consumer c
+                on c.consumer_id = bl.buyer_id
+                inner join banknote_deal bd on bd.banknote_deal_id = bl.banknote_deal_id
+                where bd.banknote_id = :banknote_id
+            """, (banknote_id,)).fetchone()
+        else:
+            return self.cursor.execute("""
+                SELECT
+                    *
+                FROM
+                    (
+                        SELECT
+                            c.image,
+                            c.name,
+                            bl.price
+                        FROM
+                                 banknote_deal bd
+                            INNER JOIN banknote_lot bl ON bl.banknote_deal_id = bd.banknote_deal_id
+                            INNER JOIN consumer c ON c.consumer_id = bl.buyer_id
+                        WHERE
+                            bd.banknote_id = :banknote_id
+                        ORDER BY
+                            bl.price DESC
+                    )
+                WHERE
+                    ROWNUM = 1
+            """, (banknote_id,)).fetchone()
+
+    def refresh_deal_coin_value(self, coin_id):
         deal_type = self.cursor.execute("""
                         select type from deal_type dt
                         inner join coin_deal cd on cd.deal_type_id = dt.deal_type_id
@@ -912,7 +1035,40 @@ class Connection:
                     select price from coin_deal where coin_id = :coin_id
                 """, (coin_id,)).fetchone()[0]
 
-    def approve_deal(self, coin_id):
+    def refresh_deal_banknote_value(self, banknote_id):
+        deal_type = self.cursor.execute("""
+                        select type from deal_type dt
+                        inner join banknote_deal bd on bd.deal_type_id = dt.deal_type_id
+                        where bd.banknote_id = :banknote_id
+                    """, (banknote_id,)
+                                        ).fetchone()[0]
+        if deal_type == 'Auction':
+            max_lot = self.cursor.execute("""
+                SELECT
+                    *
+                FROM
+                    (
+                        SELECT
+                            bl.price
+                        FROM
+                                 banknote_deal bd
+                            INNER JOIN banknote_lot bl ON bl.banknote_deal_id = bd.banknote_deal_id
+                        WHERE
+                            bd.banknote_id = :banknote_id
+                        ORDER BY
+                            bl.price DESC
+                    )
+                WHERE
+                    ROWNUM = 1
+
+                    """, (banknote_id,)).fetchone()
+            if max_lot is not None:
+                return max_lot[0] + 1
+        return self.cursor.execute("""   
+                    select price from banknote_deal where banknote_id = :banknote_id
+                """, (banknote_id,)).fetchone()[0]
+
+    def approve_coin_deal(self, coin_id):
         self.cursor.execute("""
             DECLARE
                 var_coin_id         NUMBER := :coin_id;
@@ -966,6 +1122,63 @@ class Connection:
             END;
                 
         """, (coin_id, GENERAL_COLLECTION_NAME))
+
+    def approve_banknote_deal(self, banknote_id):
+        self.cursor.execute("""
+            DECLARE
+                var_banknote_id         NUMBER := :banknote_id;
+                var_price               NUMBER;
+                var_buyer_id            NUMBER;
+                var_seller_id           NUMBER;
+                var_deal_type_id        NUMBER;
+                var_banknote_deal_id    NUMBER;
+                var_collection_id       NUMBER;
+            BEGIN
+                SELECT
+                    *
+                INTO var_buyer_id, var_price, var_seller_id, var_deal_type_id
+                FROM
+                (
+                    SELECT
+                        c.consumer_id,
+                        bl.price,
+                        bd.seller_id,
+                        bd.deal_type_id
+                    FROM
+                             banknote
+                        INNER JOIN banknote_deal bd ON bd.banknote_id = banknote.banknote_id
+                        INNER JOIN banknote_lot  bl ON bl.banknote_deal_id = bd.banknote_deal_id
+                        INNER JOIN consumer  c ON c.consumer_id = bl.buyer_id
+                    WHERE
+                        banknote.banknote_id = var_banknote_id
+                    ORDER BY
+                        bl.price DESC
+                )
+                WHERE
+                    ROWNUM = 1;
+
+                INSERT INTO banknote_deal_archive(banknote_id, seller_id, buyer_id, price, deal_type_id)
+                VALUES (var_banknote_id, var_seller_id, var_buyer_id, var_price, var_deal_type_id);
+
+                SELECT banknote_deal_id INTO var_banknote_deal_id 
+                FROM banknote_deal where banknote_id = var_banknote_id;
+                
+                DELETE FROM banknote_lot WHERE banknote_deal_id = var_banknote_deal_id;
+                DELETE FROM banknote_deal WHERE banknote_deal_id = var_banknote_deal_id;
+
+                SELECT coll.collection_id INTO var_collection_id FROM collection coll
+                INNER JOIN consumer c on c.consumer_id = coll.consumer_id
+                WHERE c.consumer_id = var_buyer_id
+                AND coll.name = :general;
+
+                UPDATE collection_banknote
+                SET collection_id = var_collection_id
+                WHERE banknote_id = var_banknote_id;
+
+                commit;
+            END;
+
+        """, (banknote_id, GENERAL_COLLECTION_NAME))
 
     def search_users(self, name):
         return self.cursor.execute("""
@@ -1035,7 +1248,8 @@ class Connection:
 
     def search_collection_banknotes(self, collection_id):
         return self.cursor.execute("""
-            SELECT banknote.banknote_id, td.value, currency.name, td.year, td.subject, cons.name, td.image_obverse
+            SELECT banknote.banknote_id, td.value, currency.name, td.year, td.subject, cons.name, td.image_obverse,
+                    banknote_deal.banknote_deal_id
             from banknote
             inner join collection_banknote cb
                 on cb.banknote_id = banknote.banknote_id
@@ -1047,6 +1261,8 @@ class Connection:
                 on currency.currency_id = td.currency_id
             inner join consumer cons
                 on cons.consumer_id = c.consumer_id
+            left outer join banknote_deal
+                on banknote_deal.banknote_id = banknote.banknote_id
             where c.collection_id = :collection_id
         """, (collection_id,)).fetchall()
 
@@ -1105,7 +1321,8 @@ class Connection:
     def search_banknotes_by_details(self, value, currency_name, currency_country, year, token_type, material,
                                     description, subject, width, height):
         statement = """
-            SELECT banknote.banknote_id, td.value, currency.name, td.year, td.subject, cons.name, td.image_obverse
+            SELECT banknote.banknote_id, td.value, currency.name, td.year, td.subject, cons.name, td.image_obverse,
+                    banknote_deal.banknote_deal_id
             from banknote
             inner join collection_banknote cb
                 on cb.banknote_id = banknote.banknote_id
@@ -1123,6 +1340,8 @@ class Connection:
                 on token_type.token_type_id = td.type_id
             inner join material
                 on material.material_id = td.material_id
+            left outer join banknote_deal
+                on banknote_deal.banknote_id = banknote.banknote_id
             where 1 = 1
         """
         if value is not None:
@@ -1147,7 +1366,7 @@ class Connection:
             statement += " and bd.height = " + str(height)
         return self.cursor.execute(statement).fetchall()
 
-    def make_offer(self, coin_id, price, buyer_username):
+    def make_coin_offer(self, coin_id, price, buyer_username):
         name = self.cursor.execute("""
             SELECT c.name
             FROM consumer c
@@ -1180,13 +1399,54 @@ class Connection:
         """, (coin_id, buyer_username, price))
         return MakeOfferCode.SUCCESS
 
-    def get_deal_type(self, coin_id):
+    def make_banknote_offer(self, banknote_id, price, buyer_username):
+        name = self.cursor.execute("""
+            SELECT c.name
+            FROM consumer c
+            inner join banknote_deal bd on bd.seller_id = c.consumer_id
+            where bd.banknote_id = :banknote_id
+        """, (banknote_id,)).fetchone()[0]
+        if name == buyer_username:
+            return MakeOfferCode.SAME_CONSUMER
+        start_price = self.cursor.execute("""
+                    SELECT price FROM banknote_deal WHERE banknote_id = :banknote_id
+                """, (banknote_id,)).fetchone()[0]
+        if start_price > price:
+            return MakeOfferCode.SMALL_PRICE
+        self.cursor.execute("""
+            DECLARE
+                var_banknote_deal_id NUMBER;
+                var_consumer_id      NUMBER;
+            BEGIN
+                SELECT banknote_deal_id INTO var_banknote_deal_id
+                FROM banknote_deal WHERE banknote_id = :banknote_id;
+
+                SELECT consumer_id INTO var_consumer_id
+                FROM consumer WHERE name = :name;
+
+                INSERT INTO banknote_lot (banknote_deal_id, price, buyer_id)
+                VALUES (var_banknote_deal_id, :price, var_consumer_id);
+
+                COMMIT;
+            END;
+        """, (banknote_id, buyer_username, price))
+        return MakeOfferCode.SUCCESS
+
+    def get_deal_coin_type(self, coin_id):
         return self.cursor.execute('''
             select dt.type
             from deal_type dt
             inner join coin_deal cd on cd.deal_type_id = dt.deal_type_id
             where cd.coin_id = :coin_id
         ''', (coin_id, )).fetchone()[0]
+
+    def get_deal_banknote_type(self, banknote_id):
+        return self.cursor.execute('''
+            select dt.type
+            from deal_type dt
+            inner join banknote_deal bd on bd.deal_type_id = dt.deal_type_id
+            where bd.banknote_id = :banknote_id
+        ''', (banknote_id, )).fetchone()[0]
 
 
 connection = Connection()

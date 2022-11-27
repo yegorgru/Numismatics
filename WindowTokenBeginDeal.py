@@ -6,11 +6,12 @@ from Connection import *
 from WindowMode import WindowMode
 
 
-class WindowBanknoteBeginDeal(Toplevel):
-    def __init__(self, controller, coin_id):
+class WindowTokenBeginDeal(Toplevel):
+    def __init__(self, controller, token_id, is_coin):
         Toplevel.__init__(self)
         self.controller = controller
-        self.coin_id = coin_id
+        self.token_id = token_id
+        self.is_coin = is_coin
 
         self.title('Sell details')
         self.geometry('500x250+300+100')
@@ -53,9 +54,14 @@ class WindowBanknoteBeginDeal(Toplevel):
         except ValueError:
             self.price_entry.set_text("1")
             return
-        connection.create_deal(
-            self.coin_id, price, deal_type
-        )
+        if self.is_coin:
+            connection.create_coin_deal(
+                self.token_id, price, deal_type
+            )
+        else:
+            connection.create_banknote_deal(
+                self.token_id, price, deal_type
+            )
         self.destroy()
 
 

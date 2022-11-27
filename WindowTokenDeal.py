@@ -7,11 +7,12 @@ from Utils import *
 from Definitions import *
 
 
-class WindowBanknoteDeal(Toplevel):
-    def __init__(self, controller, coin_id):
+class WindowTokenDeal(Toplevel):
+    def __init__(self, controller, token_id, is_coin):
         Toplevel.__init__(self)
         self.controller = controller
-        self.coin_id = coin_id
+        self.token_id = token_id
+        self.is_coin = is_coin
 
         self.title('Sell details')
         self.geometry('700x400+300+100')
@@ -62,10 +63,13 @@ class WindowBanknoteDeal(Toplevel):
 
     def destroy(self, destroy=False) -> None:
         Toplevel.destroy(self)
-        self.controller.after_w_coin_deal(destroy)
+        self.controller.after_w_token_deal(destroy)
 
     def load(self):
-        rs = connection.get_deal_details(self.coin_id)
+        if self.is_coin:
+            rs = connection.get_deal_coin_details(self.token_id)
+        else:
+            rs = connection.get_deal_banknote_details(self.token_id)
         if rs is None:
             img = Image.open(PATH_IMAGE_EMPTY_PROFILE)
             self.profile_name.configure(text='Offers not found')
@@ -86,13 +90,19 @@ class WindowBanknoteDeal(Toplevel):
     def approve_deal(self):
         answer = askyesno('Approve deal confirmation', 'You won\'t be able to cancel deal')
         if answer:
-            connection.approve_deal(self.coin_id)
+            if self.is_coin:
+                connection.approve_coin_deal(self.token_id)
+            else:
+                connection.approve_banknote_deal(self.token_id)
             self.destroy(True)
 
     def cancel(self):
         answer = askyesno('Cancel deal confirmation', 'Confirm if you want to cancel deal')
         if answer:
-            connection.cancel_deal(self.coin_id)
+            if self.is_coin:
+                connection.cancel_coin_deal(self.token_id)
+            else:
+                connection.cancel_banknote_deal(self.token_id)
             self.destroy(True)
 
 

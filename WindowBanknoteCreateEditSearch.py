@@ -2,7 +2,7 @@ from tkinter import *
 from tkinter import ttk
 from PIL import Image, ImageTk
 from tkinter.messagebox import askyesno
-from tkinter.messagebox import showinfo
+from tkinter.messagebox import showinfo, showwarning
 
 from GUI.EntryWithPlaceholder import EntryWithPlaceholder
 from GUI.TextWithPlaceholder import TextWithPlaceholder
@@ -10,16 +10,17 @@ from Connection import *
 from Utils import *
 from Definitions import *
 from WindowMode import WindowMode
-from WindowBanknoteBeginDeal import WindowBanknoteBeginDeal
-from WindowBanknoteDeal import WindowBanknoteDeal
+from WindowTokenBeginDeal import WindowTokenBeginDeal
+from WindowTokenDeal import WindowTokenDeal
 
 
 class WindowBanknoteCreateEditSearch(Toplevel):
-    def __init__(self, controller, window_mode, banknote_id=None):
+    def __init__(self, controller, window_mode, banknote_id=None, offer_username=None):
         Toplevel.__init__(self)
         self.mode = window_mode
         self.controller = controller
         self.collection_id = None
+        self.offer_username = offer_username
         if self.mode != WindowMode.SEARCH_RESULT and self.mode != WindowMode.SEARCH:
             self.collection_id = controller.collection_id
         self.banknote_id = banknote_id
@@ -141,11 +142,16 @@ class WindowBanknoteCreateEditSearch(Toplevel):
         self.amount_entry.grid(row=0, column=1, sticky="w", pady=(20, 0))
         br99 = Frame(self.frame_btn_sale, width=400, height=2, bg='black')
         br99.grid(row=1, column=1, sticky="w", pady=(0, 20))
+        self.refresh_btn = Button(
+            self.frame_btn_sale, width=30, pady=7, text='Refresh', bg='#57a1f8', fg='white', border=0,
+            font=('Microsoft YaHei UI Light', 11, 'bold'), command=lambda: self.refresh_deal_amount()
+        )
+        self.refresh_btn.grid(row=2, column=1, sticky="w", pady=(20, 20))
         self.make_offer_btn = Button(
             self.frame_btn_sale, width=30, pady=7, text='Make offer', bg='#57a1f8', fg='white', border=0,
             font=('Microsoft YaHei UI Light', 11, 'bold'), command=lambda: self.make_offer()
         )
-        self.make_offer_btn.grid(row=2, column=1, sticky="w", pady=(20, 20))
+        self.make_offer_btn.grid(row=3, column=1, sticky="w", pady=(20, 20))
         self.frame_btn_sale.grid_columnconfigure(0, weight=1)
         self.frame_btn_sale.grid_columnconfigure(2, weight=1)
         self.frame_btn_sale.grid_remove()
@@ -175,10 +181,10 @@ class WindowBanknoteCreateEditSearch(Toplevel):
 
     def sell_delete(self):
         if self.mode == WindowMode.VIEW:
-            new_deal_window = WindowBanknoteBeginDeal(self, self.banknote_id)
+            new_deal_window = WindowTokenBeginDeal(self, self.banknote_id, is_coin=False)
             new_deal_window.grab_set()
         elif self.mode == WindowMode.ON_SALE:
-            deal_window = WindowBanknoteDeal(self, self.banknote_id)
+            deal_window = WindowTokenDeal(self, self.banknote_id, is_coin=False)
             deal_window.grab_set()
         else:
             answer = askyesno('Banknote delete confirmation', 'Are you sure? Information about banknote will be lost')
@@ -187,7 +193,7 @@ class WindowBanknoteCreateEditSearch(Toplevel):
                 self.controller.load_banknotes()
                 self.destroy()
 
-    def after_w_banknote_deal(self, destroy):
+    def after_w_token_deal(self, destroy):
         if destroy:
             self.destroy()
 
@@ -391,6 +397,7 @@ class WindowBanknoteCreateEditSearch(Toplevel):
             self.set_enable_state(False)
             if self.sale_possible:
                 self.frame_btn_sale.grid()
+                self.refresh_deal_amount()
         elif self.mode == WindowMode.SEARCH:
             self.frame_btn.grid_remove()
             self.banknote_image_obverse.grid_remove()
@@ -399,10 +406,24 @@ class WindowBanknoteCreateEditSearch(Toplevel):
             self.set_enable_state(True)
 
     def refresh_deal_amount(self):
-        self.amount_entry.set_text(str(connection.refresh_deal_value(self.banknote_id)))
+        self.amount_entry.set_text(str(connection.refresh_deal_banknote_value(self.banknote_id)))
+        if connection.get_deal_banknote_type(self.banknote_id) == 'Sale':
+            self.amount_entry.configure(state=DISABLED)
+            self.refresh_btn.grid_remove()
 
     def make_offer(self):
-        amount = self.amount_entry.get_text()
+        try:
+            amount = int(self.amount_entry.get_text())
+        except ValueError:
+            self.refresh_deal_amount()
+            return
+        code = connection.make_banknote_offer(self.banknote_id, amount, self.offer_username)
+        if code == MakeOfferCode.SAME_CONSUMER:
+            showwarning("Warning", "You can't make offer for your token")
+        elif code == MakeOfferCode.SMALL_PRICE:
+            showwarning("Warning", "Amount is too small")
+        elif code == MakeOfferCode.SUCCESS:
+            showinfo("Information", "Offer created successfully")
 
 
 

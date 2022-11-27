@@ -10,8 +10,8 @@ from Connection import *
 from Utils import *
 from Definitions import *
 from WindowMode import WindowMode
-from WindowCoinBeginDeal import WindowCoinBeginDeal
-from WindowCoinDeal import WindowCoinDeal
+from WindowTokenBeginDeal import WindowTokenBeginDeal
+from WindowTokenDeal import WindowTokenDeal
 
 
 class WindowCoinCreateEditSearch(Toplevel):
@@ -193,10 +193,10 @@ class WindowCoinCreateEditSearch(Toplevel):
 
     def sell_delete(self):
         if self.mode == WindowMode.VIEW:
-            new_deal_window = WindowCoinBeginDeal(self, self.coin_id)
+            new_deal_window = WindowTokenBeginDeal(self, self.coin_id, is_coin=True)
             new_deal_window.grab_set()
         elif self.mode == WindowMode.ON_SALE:
-            deal_window = WindowCoinDeal(self, self.coin_id)
+            deal_window = WindowTokenDeal(self, self.coin_id, is_coin=True)
             deal_window.grab_set()
         else:
             answer = askyesno('Coin delete confirmation', 'Are you sure? Information about coin will be lost')
@@ -205,7 +205,7 @@ class WindowCoinCreateEditSearch(Toplevel):
                 self.controller.load_coins()
                 self.destroy()
 
-    def after_w_coin_deal(self, destroy):
+    def after_w_token_deal(self, destroy):
         if destroy:
             self.destroy()
 
@@ -426,8 +426,8 @@ class WindowCoinCreateEditSearch(Toplevel):
             self.set_enable_state(True)
 
     def refresh_deal_amount(self):
-        self.amount_entry.set_text(str(connection.refresh_deal_value(self.coin_id)))
-        if connection.get_deal_type(self.coin_id) == 'Sale':
+        self.amount_entry.set_text(str(connection.refresh_deal_coin_value(self.coin_id)))
+        if connection.get_deal_coin_type(self.coin_id) == 'Sale':
             self.amount_entry.configure(state=DISABLED)
             self.refresh_btn.grid_remove()
 
@@ -437,7 +437,7 @@ class WindowCoinCreateEditSearch(Toplevel):
         except ValueError:
             self.refresh_deal_amount()
             return
-        code = connection.make_offer(self.coin_id, amount, self.offer_username)
+        code = connection.make_coin_offer(self.coin_id, amount, self.offer_username)
         if code == MakeOfferCode.SAME_CONSUMER:
             showwarning("Warning", "You can't make offer for your token")
         elif code == MakeOfferCode.SMALL_PRICE:

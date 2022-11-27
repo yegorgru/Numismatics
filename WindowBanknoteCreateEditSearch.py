@@ -10,19 +10,19 @@ from Connection import *
 from Utils import *
 from Definitions import *
 from WindowMode import WindowMode
-from WindowCoinBeginDeal import WindowCoinBeginDeal
-from WindowCoinDeal import WindowCoinDeal
+from WindowBanknoteBeginDeal import WindowBanknoteBeginDeal
+from WindowBanknoteDeal import WindowBanknoteDeal
 
 
-class WindowCoinCreateEditSearch(Toplevel):
-    def __init__(self, controller, window_mode, coin_id=None):
+class WindowBanknoteCreateEditSearch(Toplevel):
+    def __init__(self, controller, window_mode, banknote_id=None):
         Toplevel.__init__(self)
         self.mode = window_mode
         self.controller = controller
         self.collection_id = None
         if self.mode != WindowMode.SEARCH_RESULT and self.mode != WindowMode.SEARCH:
             self.collection_id = controller.collection_id
-        self.coin_id = coin_id
+        self.banknote_id = banknote_id
 
         self.geometry('1600x800+200+100')
         self.resizable(False, False)
@@ -58,24 +58,24 @@ class WindowCoinCreateEditSearch(Toplevel):
         img = Image.open(PATH_IMAGE_EMPTY)
         img = img.resize((400, 400), Image.ANTIALIAS)
         self.image = ImageTk.PhotoImage(img)
-        self.coin_image_obverse = Label(self, image=self.image, bg='white', borderwidth=0)
-        self.coin_image_obverse.grid(row=10, column=1, sticky="w", pady=(20, 20))
+        self.banknote_image_obverse = Label(self, image=self.image, bg='white', borderwidth=0)
+        self.banknote_image_obverse.grid(row=10, column=1, sticky="w", pady=(20, 20))
         self.image_value_obverse = None
 
         img2 = Image.open(PATH_IMAGE_EMPTY)
         img2 = img2.resize((400, 400), Image.ANTIALIAS)
         self.image2 = ImageTk.PhotoImage(img2)
-        self.coin_image_reverse = Label(self, image=self.image2, bg='white', borderwidth=0)
-        self.coin_image_reverse.grid(row=10, column=2, sticky="w", pady=(20, 20))
+        self.banknote_image_reverse = Label(self, image=self.image2, bg='white', borderwidth=0)
+        self.banknote_image_reverse.grid(row=10, column=2, sticky="w", pady=(20, 20))
         self.image_value_reverse = None
 
-        self.diameter_entry = EntryWithPlaceholder(self, "Diameter")
-        self.diameter_entry.grid(row=0, column=2, padx=(83, 20), pady=(20, 0), sticky="w")
+        self.width_entry = EntryWithPlaceholder(self, "Width")
+        self.width_entry.grid(row=0, column=2, padx=(83, 20), pady=(20, 0), sticky="w")
         br7 = Frame(self, width=400, height=2, bg='black')
         br7.grid(row=1, column=2, padx=(20, 20), pady=(0, 20))
 
-        self.weight_entry = EntryWithPlaceholder(self, "Weight")
-        self.weight_entry.grid(row=2, column=2, padx=(83, 20), pady=(20, 0), sticky="w")
+        self.height_entry = EntryWithPlaceholder(self, "Height")
+        self.height_entry.grid(row=2, column=2, padx=(83, 20), pady=(20, 0), sticky="w")
         br8 = Frame(self, width=400, height=2, bg='black')
         br8.grid(row=3, column=2, padx=(20, 20), pady=(0, 20))
 
@@ -102,18 +102,6 @@ class WindowCoinCreateEditSearch(Toplevel):
         self.type_combobox.grid(row=6, column=2, padx=(83, 20), pady=(20, 0), sticky="w")
         br6 = Frame(self, width=400, height=2, bg='white')
         br6.grid(row=7, column=2, padx=(20, 20), pady=(0, 20))
-
-        self.edge_var = StringVar()
-        self.edge_combobox = ttk.Combobox(self, width=40, textvariable=self.edge_var)
-        rs = connection.get_edge_types()
-        edge_values = tuple_list_to_tuple(rs)
-        if self.mode == WindowMode.SEARCH:
-            edge_values = ("", ) + edge_values
-        self.edge_combobox.configure(values=edge_values)
-        self.edge_combobox.current(0)
-        self.edge_combobox.grid(row=8, column=2, padx=(83, 20), pady=(20, 0), sticky="w")
-        br9 = Frame(self, width=400, height=2, bg='white')
-        br9.grid(row=9, column=2, padx=(20, 20), pady=(0, 20))
 
         self.description = TextWithPlaceholder(self, placeholder="Description", width=40, height=5)
         self.description.grid(column=3, row=0, rowspan=5, sticky="w", pady=(0, 20))
@@ -173,8 +161,8 @@ class WindowCoinCreateEditSearch(Toplevel):
         self.frame_search_btn.grid_columnconfigure(2, weight=1)
         self.frame_search_btn.grid_remove()
 
-        self.coin_image_obverse.bind("<Button-1>", self.set_image_obverse)
-        self.coin_image_reverse.bind("<Button-1>", self.set_image_reverse)
+        self.banknote_image_obverse.bind("<Button-1>", self.set_image_obverse)
+        self.banknote_image_reverse.bind("<Button-1>", self.set_image_reverse)
 
         self.sale_possible = False
 
@@ -183,29 +171,29 @@ class WindowCoinCreateEditSearch(Toplevel):
     def destroy(self) -> None:
         Toplevel.destroy(self)
         if self.mode != WindowMode.SEARCH_RESULT and self.mode != WindowMode.SEARCH:
-            self.controller.load_coins()
+            self.controller.load_banknotes()
 
     def sell_delete(self):
         if self.mode == WindowMode.VIEW:
-            new_deal_window = WindowCoinBeginDeal(self, self.coin_id)
+            new_deal_window = WindowBanknoteBeginDeal(self, self.banknote_id)
             new_deal_window.grab_set()
         elif self.mode == WindowMode.ON_SALE:
-            deal_window = WindowCoinDeal(self, self.coin_id)
+            deal_window = WindowBanknoteDeal(self, self.banknote_id)
             deal_window.grab_set()
         else:
-            answer = askyesno('Coin delete confirmation', 'Are you sure? Information about coin will be lost')
+            answer = askyesno('Banknote delete confirmation', 'Are you sure? Information about banknote will be lost')
             if answer:
-                connection.delete_coin(self.coin_id)
-                self.controller.load_coins()
+                connection.delete_banknote(self.banknote_id)
+                self.controller.load_banknotes()
                 self.destroy()
 
-    def after_w_coin_deal(self, destroy):
+    def after_w_banknote_deal(self, destroy):
         if destroy:
             self.destroy()
 
     def create_edit_save_search(self):
         if self.mode == WindowMode.ON_SALE:
-            showinfo("Info", "You can't edit coin when it's on sale")
+            showinfo("Info", "You can't edit banknote when it's on sale")
             return
         elif self.mode == WindowMode.VIEW:
             self.set_mode(WindowMode.EDIT)
@@ -232,17 +220,17 @@ class WindowCoinCreateEditSearch(Toplevel):
             year = None
         subject = self.subject.get_text()
         try:
-            diameter = float(self.diameter_entry.get_text())
+            width = float(self.width_entry.get_text())
         except ValueError:
-            self.diameter_entry.set_text("10.0")
+            self.width_entry.set_text("10.0")
             is_error = True
-            diameter = None
+            width = None
         try:
-            weight = float(self.weight_entry.get_text())
+            height = float(self.height_entry.get_text())
         except ValueError:
-            self.weight_entry.set_text("2.0")
+            self.height_entry.set_text("2.0")
             is_error = True
-            weight = None
+            height = None
         if self.material_var.get() == "":
             material = None
         else:
@@ -251,37 +239,33 @@ class WindowCoinCreateEditSearch(Toplevel):
             type_name = None
         else:
             type_name = self.type_var.get()
-        if self.edge_var.get() == "":
-            edge = None
-        else:
-            edge = self.edge_var.get()
         description = self.description.get_text()
         if self.mode != WindowMode.SEARCH:
             collection_name = self.collection_var.get()
         if is_error and self.mode != WindowMode.SEARCH:
             return
         if self.mode == WindowMode.CREATE_NEW:
-            connection.create_coin(value=value, currency_name=currency_name, currency_country=currency_country,
-                                   year=year, token_type=type_name, material=material,
-                                   image_obverse=self.image_value_obverse, image_reverse=self.image_value_reverse,
-                                   description=description, subject=subject, diameter=diameter, weight=weight,
-                                   edge=edge, collection_name=collection_name)
-            self.controller.load_coins()
+            connection.create_banknote(value=value, currency_name=currency_name, currency_country=currency_country,
+                                       year=year, token_type=type_name, material=material,
+                                       image_obverse=self.image_value_obverse, image_reverse=self.image_value_reverse,
+                                       description=description, subject=subject, width=width, height=height,
+                                       collection_name=collection_name)
+            self.controller.load_banknotes()
             self.destroy()
         elif self.mode == WindowMode.EDIT:
-            connection.update_coin(value=value, currency_name=currency_name, currency_country=currency_country,
-                                   year=year, token_type=type_name, material=material,
-                                   image_obverse=self.image_value_obverse, image_reverse=self.image_value_reverse,
-                                   description=description, subject=subject, diameter=diameter, weight=weight,
-                                   edge=edge, coin_id=self.coin_id, collection_name=collection_name)
+            connection.update_banknote(value=value, currency_name=currency_name, currency_country=currency_country,
+                                       year=year, token_type=type_name, material=material,
+                                       image_obverse=self.image_value_obverse, image_reverse=self.image_value_reverse,
+                                       description=description, subject=subject, width=width, height=height,
+                                       banknote_id=self.banknote_id, collection_name=collection_name)
             self.set_mode(WindowMode.VIEW)
         elif self.mode == WindowMode.SEARCH:
-            rs = connection.search_coins_by_details(
+            rs = connection.search_banknotes_by_details(
                 value=value, currency_name=currency_name, currency_country=currency_country, year=year,
-                token_type=type_name, material=material, description=description, subject=subject, diameter=diameter,
-                weight=weight, edge=edge
+                token_type=type_name, material=material, description=description, subject=subject, width=width,
+                height=height
             )
-            self.controller.set_search_results(rs, is_coins=True)
+            self.controller.set_search_results(rs, is_coins=False)
             self.destroy()
 
     def set_image_obverse(self, e):
@@ -291,9 +275,9 @@ class WindowCoinCreateEditSearch(Toplevel):
         if not file:
             return
         img = Image.open(file)
-        img = img.resize((400, 400), Image.ANTIALIAS)
+        img = img.resize((400, 250), Image.ANTIALIAS)
         self.image = ImageTk.PhotoImage(img)
-        self.coin_image_obverse.configure(image=self.image)
+        self.banknote_image_obverse.configure(image=self.image)
         file = open(file, 'rb')
         file = io.BytesIO(file.read())
         file.seek(0, os.SEEK_END)
@@ -306,9 +290,9 @@ class WindowCoinCreateEditSearch(Toplevel):
         if not file:
             return
         img = Image.open(file)
-        img = img.resize((400, 400), Image.ANTIALIAS)
+        img = img.resize((400, 250), Image.ANTIALIAS)
         self.image2 = ImageTk.PhotoImage(img)
-        self.coin_image_reverse.configure(image=self.image2)
+        self.banknote_image_reverse.configure(image=self.image2)
         file = open(file, 'rb')
         file = io.BytesIO(file.read())
         file.seek(0, os.SEEK_END)
@@ -320,11 +304,10 @@ class WindowCoinCreateEditSearch(Toplevel):
             self.currency_combobox.config(state="readonly")
             self.year_entry.config(state=NORMAL)
             self.subject.config(state=NORMAL)
-            self.diameter_entry.config(state=NORMAL)
-            self.weight_entry.config(state=NORMAL)
+            self.width_entry.config(state=NORMAL)
+            self.height_entry.config(state=NORMAL)
             self.material_combobox.config(state="readonly")
             self.type_combobox.config(state="readonly")
-            self.edge_combobox.config(state="readonly")
             self.description.config(state=NORMAL)
             if self.collection_id is not None:
                 self.collection_combobox.config(state="readonly")
@@ -333,17 +316,16 @@ class WindowCoinCreateEditSearch(Toplevel):
             self.currency_combobox.config(state=DISABLED)
             self.year_entry.config(state=DISABLED)
             self.subject.config(state=DISABLED)
-            self.diameter_entry.config(state=DISABLED)
-            self.weight_entry.config(state=DISABLED)
+            self.width_entry.config(state=DISABLED)
+            self.height_entry.config(state=DISABLED)
             self.material_combobox.config(state=DISABLED)
             self.type_combobox.config(state=DISABLED)
-            self.edge_combobox.config(state=DISABLED)
             self.description.config(state=DISABLED)
             if self.collection_id is not None:
                 self.collection_combobox.config(state=DISABLED)
 
     def load(self):
-        rs = connection.get_coin(self.coin_id)
+        rs = connection.get_banknote(self.banknote_id)
         if rs[0] is not None:
             self.value_entry.set_text(str(rs[0]))
         if rs[1] is not None:
@@ -357,16 +339,16 @@ class WindowCoinCreateEditSearch(Toplevel):
 
         if rs[6] is not None:
             img = image_from_blob(rs[6])
-            img = img.resize((400, 400), Image.ANTIALIAS)
+            img = img.resize((400,250), Image.ANTIALIAS)
             self.image = ImageTk.PhotoImage(img)
-            self.coin_image_obverse.config(image=self.image)
+            self.banknote_image_obverse.config(image=self.image)
             self.image_value_obverse = rs[6]
 
         if rs[7] is not None:
             img2 = image_from_blob(rs[7])
-            img2 = img2.resize((400, 400), Image.ANTIALIAS)
+            img2 = img2.resize((400, 250), Image.ANTIALIAS)
             self.image2 = ImageTk.PhotoImage(img2)
-            self.coin_image_reverse.config(image=self.image2)
+            self.banknote_image_reverse.config(image=self.image2)
             self.image_value_reverse = rs[7]
 
         if rs[8] is not None:
@@ -374,15 +356,13 @@ class WindowCoinCreateEditSearch(Toplevel):
         if rs[9] is not None:
             self.subject.set_text(rs[9])
         if rs[10] is not None:
-            self.diameter_entry.set_text(str(rs[10]))
+            self.width_entry.set_text(str(rs[10]))
         if rs[11] is not None:
-            self.weight_entry.set_text(str(rs[11]))
+            self.height_entry.set_text(str(rs[11]))
         if rs[12] is not None:
-            self.edge_combobox.current(self.edge_combobox["values"].index(rs[12]))
-        if rs[13] is not None:
             if self.mode != WindowMode.SEARCH_RESULT:
                 self.set_mode(WindowMode.ON_SALE)
-        self.sale_possible = rs[13] is not None
+        self.sale_possible = rs[12] is not None
 
     def set_mode(self, mode):
         self.mode = mode
@@ -390,18 +370,18 @@ class WindowCoinCreateEditSearch(Toplevel):
             self.create_edit_save_btn.config(text="CREATE")
             self.sell_delete_btn.grid_remove()
             self.set_enable_state(True)
-            self.title('Create coin')
+            self.title('Create banknote')
         elif self.mode == WindowMode.VIEW:
             self.create_edit_save_btn.config(text="EDIT")
             self.sell_delete_btn.config(text="SELL")
             self.load()
             self.set_enable_state(False)
-            self.title('View coin')
+            self.title('View banknote')
         elif self.mode == WindowMode.EDIT:
             self.create_edit_save_btn.config(text="SAVE")
             self.sell_delete_btn.config(text="DELETE")
             self.set_enable_state(True)
-            self.title('Edit coin')
+            self.title('Edit banknote')
         elif self.mode == WindowMode.ON_SALE:
             self.sell_delete_btn.config(text="SALE DETAILS")
         elif self.mode == WindowMode.SEARCH_RESULT:
@@ -412,13 +392,13 @@ class WindowCoinCreateEditSearch(Toplevel):
                 self.frame_btn_sale.grid()
         elif self.mode == WindowMode.SEARCH:
             self.frame_btn.grid_remove()
-            self.coin_image_obverse.grid_remove()
-            self.coin_image_reverse.grid_remove()
+            self.banknote_image_obverse.grid_remove()
+            self.banknote_image_reverse.grid_remove()
             self.frame_search_btn.grid()
             self.set_enable_state(True)
 
     def refresh_deal_amount(self):
-        self.amount_entry.set_text(str(connection.refresh_deal_value(self.coin_id)))
+        self.amount_entry.set_text(str(connection.refresh_deal_value(self.banknote_id)))
 
     def make_offer(self):
         print('#')

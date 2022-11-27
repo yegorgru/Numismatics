@@ -1,5 +1,6 @@
 from Connection import *
 from WindowCoinCreateEditSearch import WindowCoinCreateEditSearch
+from WindowBanknoteCreateEditSearch import WindowBanknoteCreateEditSearch
 from GUI.GridManager import GridManager
 from PreviewToken import *
 import textwrap
@@ -63,7 +64,7 @@ class PageCollection(Frame):
         )
         self.banknotes_btn.grid(row=0, column=1)
 
-        self.coins = None
+        self.tokens = None
         self.coins_frame = None
         self.coins_manager = None
 
@@ -92,29 +93,47 @@ class PageCollection(Frame):
     def load_coins(self):
         rs = connection.get_coins_preview(self.collection_id)
         coins = [
-            PreviewToken(self, ("New coin",), TokenType.CREATE_NEW)
+            PreviewToken(self, ("New coin",), TokenType.CREATE_NEW_COIN)
         ]
-        for collection in rs:
-            coins.append(PreviewToken(self, collection, TokenType.TOKEN))
+        for coin in rs:
+            coins.append(PreviewToken(self, coin, TokenType.COIN))
 
-        self.coins = GridManager(
+        self.tokens = GridManager(
             self, column_count=7, row_width=200, column_width=200, width=1920, height=630, objects=coins
         )
-        self.coins.grid(row=2, column=0, sticky='news')
+        self.tokens.grid(row=2, column=0, sticky='news')
 
     def close(self, e):
         self.controller.show_frame("PageHome")
 
     def load_banknotes(self):
-        print("#")
+        rs = connection.get_banknotes_preview(self.collection_id)
+        banknotes = [
+            PreviewToken(self, ("New banknote",), TokenType.CREATE_NEW_BANKNOTE)
+        ]
+        for banknote in rs:
+            banknotes.append(PreviewToken(self, banknote, TokenType.BANKNOTE))
+
+        self.tokens = GridManager(
+            self, column_count=5, row_width=200, column_width=350, width=1920, height=630, objects=banknotes
+        )
+        self.tokens.grid(row=2, column=0, sticky='news')
 
     def create_new_coin(self):
         new_coin_window = WindowCoinCreateEditSearch(self, window_mode=WindowMode.CREATE_NEW)
         new_coin_window.grab_set()
 
+    def create_new_banknote(self):
+        new_banknote_window = WindowBanknoteCreateEditSearch(self, window_mode=WindowMode.CREATE_NEW)
+        new_banknote_window.grab_set()
+
     def load_coin(self, coin_id):
         coin_window = WindowCoinCreateEditSearch(self, window_mode=WindowMode.VIEW, coin_id=coin_id)
         coin_window.grab_set()
+
+    def load_banknote(self, banknote_id):
+        banknote_window = WindowBanknoteCreateEditSearch(self, window_mode=WindowMode.VIEW, banknote_id=banknote_id)
+        banknote_window.grab_set()
 
     def edit_collection(self, e):
         edit_window = WindowCollectionCreateEdit(self, WindowMode.EDIT)

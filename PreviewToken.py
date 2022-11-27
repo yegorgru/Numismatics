@@ -7,15 +7,17 @@ from Definitions import *
 
 
 class TokenType(Enum):
-    CREATE_NEW = 1,
-    TOKEN = 2
+    CREATE_NEW_COIN = 1,
+    COIN = 2,
+    CREATE_NEW_BANKNOTE = 3,
+    BANKNOTE = 4
 
 
 class PreviewToken:
-    def __init__(self, controller, token, token_type=TokenType.TOKEN):
+    def __init__(self, controller, token, token_type=TokenType.COIN):
         self.controller = controller
         self.token_type = token_type
-        if token_type == TokenType.CREATE_NEW:
+        if token_type == TokenType.CREATE_NEW_COIN or token_type == TokenType.CREATE_NEW_BANKNOTE:
             self.image = Image.open(PATH_IMAGE_CREATE)
             self.text = token[0]
             self.id = None
@@ -30,10 +32,14 @@ class PreviewToken:
                 self.image = Image.open(pre_img)
 
     def click_action(self):
-        if self.token_type == TokenType.CREATE_NEW:
+        if self.token_type == TokenType.CREATE_NEW_COIN:
             self.controller.create_new_coin()
-        else:
+        elif self.token_type == TokenType.CREATE_NEW_BANKNOTE:
+            self.controller.create_new_banknote()
+        elif self.token_type == TokenType.COIN:
             self.controller.load_coin(self.id)
+        elif self.token_type == TokenType.BANKNOTE:
+            self.controller.load_banknote(self.id)
 
 
 

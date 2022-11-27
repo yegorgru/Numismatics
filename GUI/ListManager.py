@@ -19,7 +19,7 @@ class FrameListCell(Frame):
         col_number = 1
 
         for col in obj.text_columns:
-            text_column = Label(self, width=20,  text=col, fg='black', bg='white', font=('Microsoft YaHei UI Light', 12, 'bold'))
+            text_column = Label(self, width=30,  text=col, fg='black', bg='white', font=('Microsoft YaHei UI Light', 12, 'bold'))
             text_column.grid(row=0, column=col_number)
             col_number = col_number + 1
             text_column.bind("<Button-1>", self.click_slot)

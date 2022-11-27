@@ -11,8 +11,9 @@ from WindowCoinDeal import WindowCoinDeal
 from GUI.EntryWithPlaceholder import EntryWithPlaceholder
 from SearchUser import SearchUser
 from SearchCollection import SearchCollection
-from SearchCoin import SearchCoin
+from SearchToken import SearchToken
 from WindowCoinCreateEditSearch import WindowCoinCreateEditSearch
+from WindowBanknoteCreateEditSearch import WindowBanknoteCreateEditSearch
 from WindowConsumerEdit import WindowConsumerEdit
 
 
@@ -206,8 +207,11 @@ class PageHome(Frame):
         self.results.grid(row=4, column=0, sticky='news', pady=(20, 0))
 
     def search_by_details(self):
-        coin_window = WindowCoinCreateEditSearch(self, window_mode=WindowMode.SEARCH, coin_id=None)
-        coin_window.grab_set()
+        if self.search_token_var.get() == 'Coin':
+            window = WindowCoinCreateEditSearch(self, window_mode=WindowMode.SEARCH, coin_id=None)
+        else:
+            window = WindowBanknoteCreateEditSearch(self, window_mode=WindowMode.SEARCH, banknote_id=None)
+        window.grab_set()
 
     def load_search_user(self, user_id):
         collections = connection.search_user_collections(user_id)
@@ -220,11 +224,15 @@ class PageHome(Frame):
         )
         self.results.grid(row=4, column=0, sticky='news', pady=(20, 0))
 
-    def load_search_coins(self, collection_id):
+    def load_search_banknotes(self, collection_id):
         coins = connection.search_collection_coins(collection_id)
         search_results = list()
         for coin in coins:
-            search_results.append(SearchCoin(self, coin))
+            search_results.append(SearchToken(self, coin, is_coin=True))
+
+        banknotes = connection.search_collection_banknotes(collection_id)
+        for banknote in banknotes:
+            search_results.append(SearchToken(self, banknote, is_coin=False))
 
         self.results = ListManager(
             self, row_width=200, width=1920, height=750, objects=search_results
@@ -235,10 +243,15 @@ class PageHome(Frame):
         coin_window = WindowCoinCreateEditSearch(self, window_mode=WindowMode.SEARCH_RESULT, coin_id=coin_id)
         coin_window.grab_set()
 
-    def set_search_results(self, rs):
+    def load_search_banknote(self, banknote_id):
+        banknote_window = WindowBanknoteCreateEditSearch(self, window_mode=WindowMode.SEARCH_RESULT,
+                                                         banknote_id=banknote_id)
+        banknote_window.grab_set()
+
+    def set_search_results(self, rs, is_coins):
         search_results = list()
-        for coin in rs:
-            search_results.append(SearchCoin(self, coin))
+        for res in rs:
+            search_results.append(SearchToken(self, res, is_coin=is_coins))
 
         self.results = ListManager(
             self, row_width=200, width=1920, height=750, objects=search_results

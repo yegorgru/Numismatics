@@ -141,6 +141,21 @@ class Connection:
             where c.collection_id = :collection_id
         """, (collection_id,))
 
+    def get_banknotes_preview(self, collection_id):
+        return self.cursor.execute("""
+            SELECT b.banknote_id, td.value, currency.name, td.year, td.image_obverse
+            from banknote b
+            inner join collection_banknote cb
+                on cb.banknote_id = b.banknote_id
+            inner join collection c
+                on c.collection_id = cb.collection_id
+            inner join token_details td
+                on b.token_details_id = td.token_details_id
+            inner join currency
+                on currency.currency_id = td.currency_id
+            where c.collection_id = :collection_id
+        """, (collection_id,))
+
     def get_user_deals_preview(self, username, active):
         if active:
             return self.cursor.execute("""
@@ -287,6 +302,103 @@ class Connection:
                   description, subject, edge, diameter, weight, collection_name)
         )
 
+    def create_banknote(self, value, currency_name, currency_country, year, token_type, material, image_obverse,
+                        image_reverse, description, subject, width, height, collection_name):
+        self.cursor.execute('''
+            DECLARE
+                var_token_type_id    NUMBER;
+                var_material_id      NUMBER;
+                var_currency_id      NUMBER;
+                var_token_details_id NUMBER;
+                var_banknote_details_id  NUMBER;
+                var_banknote_id          NUMBER;
+                var_collection_id    NUMBER;
+            BEGIN
+                SELECT
+                    token_type_id
+                INTO var_token_type_id
+                FROM
+                    token_type
+                WHERE
+                    type = :type;
+
+                SELECT
+                    material_id
+                INTO var_material_id
+                FROM
+                    material
+                WHERE
+                    name = :material_name;
+
+                SELECT
+                    currency_id
+                INTO var_currency_id
+                FROM
+                    currency
+                WHERE
+                        name = :currency_name
+                    AND country = :country;
+
+                INSERT INTO token_details (
+                    value,
+                    currency_id,
+                    year,
+                    type_id,
+                    material_id,
+                    image_obverse,
+                    image_reverse,
+                    description,
+                    subject
+                ) VALUES (
+                    :value,
+                    var_currency_id,
+                    :year,
+                    var_token_type_id,
+                    var_material_id,
+                    :image_obverse,
+                    :image_reverse,
+                    :description,
+                    :subject
+                ) RETURNING token_details_id INTO var_token_details_id;
+
+                INSERT INTO banknote_details (
+                    width,
+                    height
+                ) VALUES (
+                    :diameter,
+                    :weight
+                ) RETURNING banknote_details_id INTO var_banknote_details_id;
+
+                INSERT INTO banknote (
+                    token_details_id,
+                    banknote_details_id
+                ) VALUES (
+                    var_token_details_id,
+                    var_banknote_details_id
+                ) RETURNING banknote_id INTO var_banknote_id;
+
+                SELECT
+                    collection_id
+                INTO var_collection_id
+                FROM
+                    collection
+                WHERE
+                    name = :collection_name;
+
+                INSERT INTO collection_banknote (
+                    banknote_id,
+                    collection_id
+                ) VALUES (
+                    var_banknote_id,
+                    var_collection_id
+                );
+
+                COMMIT;
+            END;
+            ''', (token_type, material, currency_name, currency_country, value, year, image_obverse, image_reverse,
+                  description, subject, width, height, collection_name)
+                            )
+
     def get_coin(self, coin_id):
         return self.cursor.execute("""
             SELECT
@@ -316,6 +428,34 @@ class Connection:
             WHERE
                 coin.coin_id = :coin_id
         """, (coin_id, )).fetchone()
+
+    def get_banknote(self, banknote_id):
+        return self.cursor.execute("""
+            SELECT
+                td.value,
+                currency.name,
+                currency.country,
+                td.year,
+                token_type.type,
+                material.name,
+                td.image_obverse,
+                td.image_reverse,
+                td.description,
+                td.subject,
+                bd.width,
+                bd.height,
+                banknote_deal.banknote_deal_id
+            FROM
+                     banknote
+                INNER JOIN token_details td ON td.token_details_id = banknote.token_details_id
+                INNER JOIN banknote_details  bd ON bd.banknote_details_id = banknote.banknote_details_id
+                INNER JOIN currency ON td.currency_id = currency.currency_id
+                INNER JOIN token_type ON td.type_id = token_type.token_type_id
+                INNER JOIN material ON td.material_id = material.material_id
+                LEFT JOIN banknote_deal ON banknote_deal.banknote_id = banknote.banknote_id
+            WHERE
+                banknote.banknote_id = :banknote_id
+        """, (banknote_id, )).fetchone()
 
     def update_coin(self, coin_id, value, currency_name, currency_country, year, token_type, material, image_obverse,
                     image_reverse, description, subject, diameter, weight, edge, collection_name):
@@ -415,6 +555,95 @@ class Connection:
             ''', (coin_id, token_type, material, currency_name, currency_country, value, year, image_obverse,
                   image_reverse, description, subject, edge, diameter, weight, collection_name)
         )
+
+    def update_banknote(self, banknote_id, value, currency_name, currency_country, year, token_type, material,
+                        image_obverse, image_reverse, description, subject, width, height, collection_name):
+        self.cursor.execute('''
+            DECLARE
+                var_banknote_id         NUMBER := :banknote_id;
+                var_token_type_id       NUMBER;
+                var_material_id         NUMBER;
+                var_currency_id         NUMBER;
+                var_token_details_id    NUMBER;
+                var_banknote_details_id NUMBER;
+                var_collection_id       NUMBER;
+            BEGIN
+                SELECT
+                    token_details_id,
+                    banknote_details_id
+                INTO
+                    var_token_details_id,
+                    var_banknote_details_id
+                FROM
+                    banknote
+                WHERE
+                    banknote_id = var_banknote_id;
+
+                SELECT
+                    token_type_id
+                INTO var_token_type_id
+                FROM
+                    token_type
+                WHERE
+                    type = :type;
+
+                SELECT
+                    material_id
+                INTO var_material_id
+                FROM
+                    material
+                WHERE
+                    name = :material_name;
+
+                SELECT
+                    currency_id
+                INTO var_currency_id
+                FROM
+                    currency
+                WHERE
+                        name = :currency_name
+                    AND country = :country;
+
+                UPDATE token_details
+                SET
+                    value = :value,
+                    currency_id = var_currency_id,
+                    year = :year,
+                    type_id = var_token_type_id,
+                    material_id = var_material_id,
+                    image_obverse = :image_obverse,
+                    image_reverse = :image_reverse,
+                    description = :description,
+                    subject = :subject
+                WHERE
+                    token_details_id = var_token_details_id;
+
+                UPDATE banknote_details
+                SET
+                    width = :width,
+                    height = :height
+                WHERE
+                    banknote_details_id = var_banknote_details_id;
+
+                SELECT 
+                    collection_id
+                INTO var_collection_id
+                FROM
+                    collection
+                WHERE
+                    name = :collection_name;
+
+                UPDATE collection_banknote 
+                SET
+                    collection_id = var_collection_id
+                WHERE
+                    banknote_id = var_banknote_id;
+
+                COMMIT;
+            END;
+            ''', (banknote_id, token_type, material, currency_name, currency_country, value, year, image_obverse,
+                  image_reverse, description, subject, width, height, collection_name)
+                            )
 
     def delete_coin(self, coin_id):
         self.cursor.execute('''
@@ -715,89 +944,47 @@ class Connection:
     def search_users(self, name):
         return self.cursor.execute("""
             SELECT
-                t1.col_id,
-                t1.col_name,
-                t1.col_count,
-                t2.image
-            FROM
-                     (
-                    SELECT
-                        c.consumer_id       AS col_id,
-                        c.name              AS col_name,
-                        COUNT(coin.coin_id) col_count
-                    FROM
-                             consumer c
-                        INNER JOIN collection      coll ON coll.consumer_id = c.consumer_id
-                        INNER JOIN collection_coin cc ON cc.collection_id = coll.collection_id
-                        INNER JOIN coin ON coin.coin_id = cc.coin_id
-                    WHERE
-                        c.name like '%' || :name || '%'
-                    GROUP BY
-                        c.consumer_id,
-                        c.name
-                ) t1
-                INNER JOIN consumer t2 ON t2.consumer_id = t1.col_id
+                c.consumer_id,
+                c.name,
+                c.image
+            FROM consumer c
+            WHERE
+                c.name like '%' || :name || '%'
+            ORDER BY
+                c.name
         """, (name, )).fetchall()
 
     def search_collections(self, name):
         return self.cursor.execute("""
             SELECT
-                t1.col_id,
-                t1.col_name,
-                t2.name,
-                t1.col_count,
-                t3.image
+                coll.collection_id,
+                coll.name,
+                cons.name,
+                coll.image
             FROM
-                     (
-                    SELECT
-                        coll.collection_id  AS col_id,
-                        coll.name           AS col_name,
-                        coll.consumer_id    AS cons_id,
-                        COUNT(coin.coin_id) AS col_count
-                    FROM
-                             collection coll
-                        INNER JOIN collection_coin cc ON cc.collection_id = coll.collection_id
-                        INNER JOIN coin ON coin.coin_id = cc.coin_id
-                    WHERE
-                        coll.name LIKE '%' || :name || '%' 
-                            OR coll.description LIKE '%' || :name || '%' 
-                    GROUP BY
-                        coll.collection_id,
-                        coll.name,
-                        coll.consumer_id
-                ) t1
-                INNER JOIN consumer   t2 ON t2.consumer_id = t1.cons_id
-                INNER JOIN collection t3 ON t3.collection_id = t1.col_id
+                     collection coll
+                INNER JOIN consumer cons ON cons.consumer_id = coll.consumer_id
+            WHERE
+                coll.name LIKE '%' || :name || '%' 
+                    OR coll.description LIKE '%' || :name || '%' 
+            ORDER BY
+                coll.name
         """, (name, name)).fetchall()
 
     def search_user_collections(self, user_id):
         return self.cursor.execute("""
             SELECT
-                t1.col_id,
-                t1.col_name,
-                t2.name,
-                t1.col_count,
-                t3.image
+                coll.collection_id,
+                coll.name,
+                cons.name,
+                coll.image
             FROM
-                     (
-                    SELECT
-                        coll.collection_id  AS col_id,
-                        coll.name           AS col_name,
-                        coll.consumer_id    AS cons_id,
-                        COUNT(coin.coin_id) AS col_count
-                    FROM
-                             collection coll
-                        INNER JOIN collection_coin cc ON cc.collection_id = coll.collection_id
-                        INNER JOIN coin ON coin.coin_id = cc.coin_id
-                    WHERE
-                        coll.consumer_id = :user_id
-                    GROUP BY
-                        coll.collection_id,
-                        coll.name,
-                        coll.consumer_id
-                ) t1
-                INNER JOIN consumer   t2 ON t2.consumer_id = t1.cons_id
-                INNER JOIN collection t3 ON t3.collection_id = t1.col_id
+                     collection coll
+                INNER JOIN consumer cons ON cons.consumer_id = coll.consumer_id
+            WHERE
+                cons.consumer_id = :user_id
+            ORDER BY
+                coll.name
         """, (user_id, )).fetchall()
 
     def search_collection_coins(self, collection_id):
@@ -810,6 +997,23 @@ class Connection:
                 on c.collection_id = cc.collection_id
             inner join token_details td
                 on coin.token_details_id = td.token_details_id
+            inner join currency
+                on currency.currency_id = td.currency_id
+            inner join consumer cons
+                on cons.consumer_id = c.consumer_id
+            where c.collection_id = :collection_id
+        """, (collection_id,)).fetchall()
+
+    def search_collection_banknotes(self, collection_id):
+        return self.cursor.execute("""
+            SELECT banknote.banknote_id, td.value, currency.name, td.year, td.subject, cons.name, td.image_obverse
+            from banknote
+            inner join collection_banknote cb
+                on cb.banknote_id = banknote.banknote_id
+            inner join collection c
+                on c.collection_id = cb.collection_id
+            inner join token_details td
+                on banknote.token_details_id = td.token_details_id
             inner join currency
                 on currency.currency_id = td.currency_id
             inner join consumer cons
@@ -864,6 +1068,51 @@ class Connection:
             statement += " and cd.weight = " + str(weight)
         if edge is not None:
             statement += " and edge.name = '" + edge + "'"
+        return self.cursor.execute(statement).fetchall()
+
+    def search_banknotes_by_details(self, value, currency_name, currency_country, year, token_type, material,
+                                    description, subject, width, height):
+        statement = """
+            SELECT banknote.banknote_id, td.value, currency.name, td.year, td.subject, cons.name, td.image_obverse
+            from banknote
+            inner join collection_banknote cb
+                on cb.banknote_id = banknote.banknote_id
+            inner join collection c
+                on c.collection_id = cb.collection_id
+            inner join token_details td
+                on banknote.token_details_id = td.token_details_id
+            inner join banknote_details bd
+                on banknote.banknote_details_id = bd.banknote_details_id
+            inner join currency
+                on currency.currency_id = td.currency_id
+            inner join consumer cons
+                on cons.consumer_id = c.consumer_id
+            inner join token_type
+                on token_type.token_type_id = td.type_id
+            inner join material
+                on material.material_id = td.material_id
+            where 1 = 1
+        """
+        if value is not None:
+            statement += " and td.value = " + str(value)
+        if currency_name is not None:
+            statement += " and currency.name = '" + currency_name + "'"
+        if currency_country is not None:
+            statement += " and currency.country = '" + currency_country + "'"
+        if year is not None:
+            statement += " and td.year = " + str(year)
+        if token_type is not None:
+            statement += " and token_type.type = '" + token_type + "'"
+        if material is not None:
+            statement += " and material.name = '" + material + "'"
+        if description is not None and description != "":
+            statement += " and td.description like  '%" + description + "%'"
+        if subject is not None and subject != "":
+            statement += " and td.subject like  '%" + subject + "%'"
+        if width is not None:
+            statement += " and bd.width = " + str(width)
+        if height is not None:
+            statement += " and bd.height = " + str(height)
         return self.cursor.execute(statement).fetchall()
 
 

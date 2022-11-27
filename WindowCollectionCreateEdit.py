@@ -105,6 +105,8 @@ class WindowCollectionCreateEdit(Toplevel):
             self.destroy()
 
     def set_image(self, e):
+        if self.name_entry.get_text() == GENERAL_COLLECTION_NAME:
+            return
         file = open_image()
         if not file:
             return
@@ -123,6 +125,11 @@ class WindowCollectionCreateEdit(Toplevel):
         if rs[0] == GENERAL_COLLECTION_NAME:
             self.name_entry.config(state=DISABLED)
             self.is_general = True
+            self.image_value = get_general_image_bytes()
+            img = Image.open(PATH_IMAGE_COLLECTION_GENERAL)
+            img = img.resize((400, 400), Image.ANTIALIAS)
+            self.image = ImageTk.PhotoImage(img)
+            self.collection_image.configure(image=self.image)
         if rs[1] is not None:
             self.description.set_text(rs[1])
         if rs[2] is not None:
@@ -132,3 +139,4 @@ class WindowCollectionCreateEdit(Toplevel):
             img = img.resize((400, 400), Image.ANTIALIAS)
             self.image = ImageTk.PhotoImage(img)
             self.collection_image.configure(image=self.image)
+            self.image_value = rs[2]

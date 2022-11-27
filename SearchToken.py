@@ -22,7 +22,7 @@ class SearchToken:
         else:
             self.text_columns.append('NOT ON SALE')
         if token[6] is None:
-            self.image = Image.open(PATH_IMAGE_EMPTY_PROFILE)
+            self.image = Image.open(PATH_IMAGE_EMPTY)
         else:
             img = token[6].read()
             pre_img = io.BytesIO(img)

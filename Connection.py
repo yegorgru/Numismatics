@@ -729,6 +729,45 @@ class Connection:
             ''', (coin_id,)
         )
 
+    def delete_banknote(self, banknote_id):
+        self.cursor.execute('''
+            DECLARE
+                var_banknote_id          NUMBER := :banknote_id;
+                var_token_details_id     NUMBER;
+                var_banknote_details_id  NUMBER;
+            BEGIN
+                SELECT
+                    token_details_id,
+                    banknote_details_id
+                INTO
+                    var_token_details_id,
+                    var_banknote_details_id
+                FROM
+                    banknote
+                WHERE
+                    banknote_id = var_banknote_id;
+
+                DELETE FROM collection_banknote
+                WHERE
+                    banknote_id = var_banknote_id;
+
+                DELETE FROM banknote
+                WHERE
+                    banknote_id = var_banknote_id;
+
+                DELETE FROM token_details
+                WHERE
+                    token_details_id = var_token_details_id;
+
+                DELETE FROM banknote_details
+                WHERE
+                    banknote_details_id = var_banknote_details_id;
+
+                COMMIT;
+            END;
+            ''', (banknote_id,)
+        )
+
     def create_collection(self, username, collection_name, description, image):
         self.cursor.execute('''
             insert into collection (name, consumer_id, description, image) 

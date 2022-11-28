@@ -137,7 +137,7 @@ class PageHome(Frame):
         )
         self.statistics_combobox.current(0)
         self.statistics_combobox.grid(row=1, column=0, pady=(20, 0), sticky="we", padx=(20, 20))
-        self.statistics_entry = EntryWithPlaceholder(self.statistics_frame, placeholder='Value')
+        self.statistics_entry = EntryWithPlaceholder(self.statistics_frame, width=40, placeholder='Value')
         self.statistics_entry.grid(row=2, column=0, sticky="sw", padx=(20, 20), pady=(20, 0))
         br = Frame(self.statistics_frame, width=400, height=2, bg='black')
         br.grid(row=3, column=0, sticky="nw", pady=(0, 20), padx=(20, 20))
@@ -301,10 +301,18 @@ class PageHome(Frame):
 
     def load_statistics_user_top(self):
         inp = self.statistics_entry.get_text().split(',')
-        rs = connection.get_user_statistics_top(inp[0], int(inp[1]))
+        if len(inp) != 2 and len(inp) != 4:
+            showwarning("Warning", "Incorrect input detected")
+        elif len(inp) == 2:
+            month_begin = 202201
+            month_end = 210001
+        elif len(inp) == 4:
+            month_begin = int(inp[2])
+            month_end = int(inp[3])
+        rs = connection.get_user_statistics_top(inp[0], int(inp[1]), month_begin, month_end)
         users = list()
-        heading = (None, "Name", "Income", "Spending", "Deals", "Tokens")
-        users.append(StatisticsConsumerRow(heading, is_heading=True))
+        heading = ("Name", "Income", "Spending", "Deals", "Tokens")
+        users.append(StatisticsConsumerRow(heading))
         for user in rs:
             users.append(StatisticsConsumerRow(user))
 

@@ -82,8 +82,6 @@ class Connection:
                     :image
                 );
                 
-                INSERT INTO consumer_statistics (consumer_id) VALUES (var_consumer_id);
-                
                 COMMIT;
             
             END;
@@ -247,7 +245,7 @@ class Connection:
         return self.cursor.execute("select name from material").fetchall()
 
     def get_currencies(self):
-        return self.cursor.execute("select name, country from currency").fetchall()
+        return self.cursor.execute("select name, country from currency order by country").fetchall()
 
     def create_coin(self, value, currency_name, currency_country, year, token_type, material, image_obverse,
                     image_reverse, description, subject, diameter, weight, edge, collection_name, collection_id):
@@ -264,6 +262,9 @@ class Connection:
                 var_collection_id           NUMBER;
                 var_tokens                  NUMBER;
                 var_consumer_id             NUMBER;
+                var_date                    DATE := SYSDATE;
+                var_month_count             NUMBER;
+                var_year_month              NUMBER := to_number(to_char(var_date, 'yyyymm'));
             BEGIN
                 SELECT
                     token_type_id
@@ -362,14 +363,22 @@ class Connection:
                     var_collection_id
                 );
                 
+                SELECT count(*) into var_month_count
+                FROM consumer_statistics
+                WHERE consumer_id = var_consumer_id and year_month = var_year_month;
+                
+                IF var_month_count = 0 THEN
+                    insert into consumer_statistics (consumer_id, year_month) values (var_consumer_id, var_year_month);
+                END IF;
+                
                 SELECT tokens INTO var_tokens FROM consumer_statistics
-                where consumer_id = var_consumer_id;
+                where consumer_id = var_consumer_id and year_month = var_year_month;
                 
                 var_tokens := var_tokens + 1;
                 
                 UPDATE consumer_statistics
                 SET tokens = var_tokens
-                WHERE consumer_id = var_consumer_id;
+                WHERE consumer_id = var_consumer_id and year_month = var_year_month;
                 
                 COMMIT;
             END;
@@ -391,6 +400,9 @@ class Connection:
                 var_collection_id    NUMBER;
                 var_tokens                  NUMBER;
                 var_consumer_id             NUMBER;
+                var_date                    DATE := SYSDATE;
+                var_month_count             NUMBER;
+                var_year_month              NUMBER := to_number(to_char(var_date, 'yyyymm'));
             BEGIN
                 SELECT
                     token_type_id
@@ -479,14 +491,22 @@ class Connection:
                     var_collection_id
                 );
                 
+                SELECT count(*) into var_month_count
+                FROM consumer_statistics
+                WHERE consumer_id = var_consumer_id and year_month = var_year_month;
+                
+                IF var_month_count = 0 THEN
+                    insert into consumer_statistics (consumer_id, year_month) values (var_consumer_id, var_year_month);
+                END IF;
+                
                 SELECT tokens INTO var_tokens FROM consumer_statistics
-                where consumer_id = var_consumer_id;
+                where consumer_id = var_consumer_id and year_month = var_year_month;
                 
                 var_tokens := var_tokens + 1;
                 
                 UPDATE consumer_statistics
                 SET tokens = var_tokens
-                WHERE consumer_id = var_consumer_id;
+                WHERE consumer_id = var_consumer_id and year_month = var_year_month;
 
                 COMMIT;
             END;
@@ -755,6 +775,9 @@ class Connection:
                 var_coin_details_id  NUMBER;
                 var_tokens           NUMBER;
                 var_consumer_id      NUMBER;
+                var_date             DATE := SYSDATE;
+                var_month_count      NUMBER;
+                var_year_month       NUMBER := to_number(to_char(var_date, 'yyyymm'));
             BEGIN
                 SELECT
                     token_details_id,
@@ -767,17 +790,28 @@ class Connection:
                 WHERE
                     coin_id = var_coin_id;
                     
-                SELECT cs.tokens, cs.consumer_id INTO var_tokens, var_consumer_id FROM consumer_statistics cs
-                inner join consumer c on c.consumer_id = cs.consumer_id
+                SELECT c.consumer_id INTO var_consumer_id
+                from consumer c
                 inner join collection coll on coll.consumer_id = c.consumer_id
                 inner join collection_coin cc on cc.collection_id = coll.collection_id
                 where cc.coin_id = var_coin_id;
+                    
+                SELECT count(*) into var_month_count
+                FROM consumer_statistics
+                WHERE consumer_id = var_consumer_id and year_month = var_year_month;
+                
+                IF var_month_count = 0 THEN
+                    insert into consumer_statistics (consumer_id, year_month) values (var_consumer_id, var_year_month);
+                END IF;
+                    
+                SELECT tokens INTO var_tokens FROM consumer_statistics
+                where consumer_id = var_consumer_id and year_month = var_year_month;
                 
                 var_tokens := var_tokens - 1;
                 
                 UPDATE consumer_statistics
                 SET tokens = var_tokens
-                WHERE consumer_id = var_consumer_id;
+                WHERE consumer_id = var_consumer_id and year_month = var_year_month;
             
                 DELETE FROM collection_coin
                 WHERE
@@ -816,6 +850,9 @@ class Connection:
                 var_banknote_details_id  NUMBER;
                 var_tokens               NUMBER;
                 var_consumer_id          NUMBER;
+                var_date                 DATE := SYSDATE;
+                var_month_count          NUMBER;
+                var_year_month           NUMBER := to_number(to_char(var_date, 'yyyymm'));
             BEGIN
                 SELECT
                     token_details_id,
@@ -828,17 +865,28 @@ class Connection:
                 WHERE
                     banknote_id = var_banknote_id;
                     
-                SELECT cs.tokens, cs.consumer_id INTO var_tokens, var_consumer_id FROM consumer_statistics cs
-                inner join consumer c on c.consumer_id = cs.consumer_id
+                SELECT c.consumer_id INTO var_consumer_id
+                FROM consumer c
                 inner join collection coll on coll.consumer_id = c.consumer_id
                 inner join collection_banknote cb on cb.collection_id = coll.collection_id
                 where cb.banknote_id = var_banknote_id;
+                
+                SELECT count(*) into var_month_count
+                FROM consumer_statistics
+                WHERE consumer_id = var_consumer_id and year_month = var_year_month;
+                
+                IF var_month_count = 0 THEN
+                    insert into consumer_statistics (consumer_id, year_month) values (var_consumer_id, var_year_month);
+                END IF;
+                
+                SELECT tokens INTO var_tokens FROM consumer_statistics
+                where consumer_id = var_consumer_id and year_month = var_year_month;
                 
                 var_tokens := var_tokens - 1;
                 
                 UPDATE consumer_statistics
                 SET tokens = var_tokens
-                WHERE consumer_id = var_consumer_id;
+                WHERE consumer_id = var_consumer_id and year_month = var_year_month;
 
                 DELETE FROM collection_banknote
                 WHERE
@@ -874,18 +922,29 @@ class Connection:
             DECLARE
                 var_collections             NUMBER;
                 var_consumer_id             NUMBER;
+                var_date                    DATE := SYSDATE;
+                var_month_count             NUMBER;
+                var_year_month              NUMBER := to_number(to_char(var_date, 'yyyymm'));
             BEGIN
                 select c.consumer_id into var_consumer_id from consumer c where c.name = :username;
                 
+                SELECT count(*) into var_month_count
+                FROM consumer_statistics
+                WHERE consumer_id = var_consumer_id and year_month = var_year_month;
+                
+                IF var_month_count = 0 THEN
+                    insert into consumer_statistics (consumer_id, year_month) values (var_consumer_id, var_year_month);
+                END IF;
+                
                 select collections into var_collections
                 from consumer_statistics
-                where consumer_id = var_consumer_id;
+                where consumer_id = var_consumer_id and year_month = var_year_month;
                 
                 var_collections := var_collections + 1;
                 
                 UPDATE consumer_statistics
                 SET collections = var_collections
-                WHERE consumer_id = var_consumer_id;
+                WHERE consumer_id = var_consumer_id and year_month = var_year_month;
                 
                 insert into collection (name, consumer_id, description, image) 
                 values (
@@ -927,6 +986,9 @@ class Connection:
                 var_consumer_id NUMBER;
                 var_collection_id NUMBER := :collection_id;
                 var_collections NUMBER;
+                var_date                    DATE := SYSDATE;
+                var_month_count             NUMBER;
+                var_year_month              NUMBER := to_number(to_char(var_date, 'yyyymm'));
             
                 CURSOR coins IS
                 SELECT
@@ -954,20 +1016,35 @@ class Connection:
             
             BEGIN
                 SELECT consumer_id into var_consumer_id from collection where collection_id = var_collection_id;
+                
+                SELECT count(*) into var_month_count
+                FROM consumer_statistics
+                WHERE consumer_id = var_consumer_id and year_month = var_year_month;
+                
+                IF var_month_count = 0 THEN
+                    insert into consumer_statistics (consumer_id, year_month) values (var_consumer_id, var_year_month);
+                END IF;
+                
+                select collections into var_collections
+                from consumer_statistics
+                where consumer_id = var_consumer_id and year_month = var_year_month;
+                
+                var_collections := var_collections - 1;
+                
+                UPDATE consumer_statistics
+                SET collections = var_collections
+                WHERE consumer_id = var_consumer_id and year_month = var_year_month;
             
                 FOR record IN coins LOOP
                 
-                    SELECT cs.tokens INTO var_tokens FROM consumer_statistics cs
-                    inner join consumer c on c.consumer_id = cs.consumer_id
-                    inner join collection coll on coll.consumer_id = c.consumer_id
-                    inner join collection_coin cc on cc.collection_id = coll.collection_id
-                    where cc.coin_id = record.coin_id;
+                    SELECT tokens INTO var_tokens FROM consumer_statistics
+                    where consumer_id = var_consumer_id and year_month = var_year_month;
                     
                     var_tokens := var_tokens - 1;
                     
                     UPDATE consumer_statistics
                     SET tokens = var_tokens
-                    WHERE consumer_id = var_consumer_id;
+                    WHERE consumer_id = var_consumer_id and year_month = var_year_month;
                 
                     UPDATE coin_deal_archive
                     SET coin_id = NULL
@@ -997,17 +1074,14 @@ class Connection:
                 
                 FOR record IN banknotes LOOP
                 
-                    SELECT cs.tokens INTO var_tokens FROM consumer_statistics cs
-                    inner join consumer c on c.consumer_id = cs.consumer_id
-                    inner join collection coll on coll.consumer_id = c.consumer_id
-                    inner join collection_banknote cb on cb.collection_id = coll.collection_id
-                    where cb.banknote_id = record.banknote_id;
+                    SELECT tokens INTO var_tokens FROM consumer_statistics
+                    where consumer_id = var_consumer_id and year_month = var_year_month;
                     
                     var_tokens := var_tokens - 1;
                     
                     UPDATE consumer_statistics
                     SET tokens = var_tokens
-                    WHERE consumer_id = var_consumer_id;
+                    WHERE consumer_id = var_consumer_id and year_month = var_year_month;
                 
                     UPDATE banknote_deal_archive
                     SET banknote_id = NULL
@@ -1034,16 +1108,6 @@ class Connection:
                         banknote_details_id = record.banknote_details_id;
             
                 END LOOP;
-                
-                select collections into var_collections
-                from consumer_statistics
-                where consumer_id = var_consumer_id;
-                
-                var_collections := var_collections - 1;
-                
-                UPDATE consumer_statistics
-                SET collections = var_collections
-                WHERE consumer_id = var_consumer_id;
             
                 DELETE FROM collection
                 WHERE
@@ -1331,6 +1395,9 @@ class Connection:
                 var_tokens          NUMBER;
                 var_total_spending  NUMBER;
                 var_owners          NUMBER;
+                var_date            DATE := SYSDATE;
+                var_month_count     NUMBER;
+                var_year_month      NUMBER := to_number(to_char(var_date, 'yyyymm'));
             BEGIN
                 SELECT
                     *
@@ -1355,8 +1422,8 @@ class Connection:
                 WHERE
                     ROWNUM = 1;
                 
-                INSERT INTO coin_deal_archive(coin_id, seller_id, buyer_id, price, deal_type_id)
-                VALUES (var_coin_id, var_seller_id, var_buyer_id, var_price, var_deal_type_id);
+                INSERT INTO coin_deal_archive(coin_id, seller_id, buyer_id, price, deal_type_id, date_end)
+                VALUES (var_coin_id, var_seller_id, var_buyer_id, var_price, var_deal_type_id, var_date);
                 
                 SELECT coin_deal_id INTO var_coin_deal_id FROM coin_deal where coin_id = var_coin_id;
                 DELETE FROM coin_lot WHERE coin_deal_id = var_coin_deal_id;
@@ -1371,9 +1438,17 @@ class Connection:
                 SET collection_id = var_collection_id
                 WHERE coin_id = var_coin_id;
                 
+                SELECT count(*) into var_month_count
+                FROM consumer_statistics
+                WHERE consumer_id = var_seller_id and year_month = var_year_month;
+                
+                IF var_month_count = 0 THEN
+                    insert into consumer_statistics (consumer_id, year_month) values (var_seller_id, var_year_month);
+                END IF;
+                
                 SELECT income, deals, tokens INTO var_income, var_deals, var_tokens
                 FROM consumer_statistics
-                WHERE consumer_id = var_seller_id;
+                WHERE consumer_id = var_seller_id and year_month = var_year_month;
                 
                 var_income := var_income + var_price;
                 var_deals := var_deals + 1;
@@ -1383,11 +1458,19 @@ class Connection:
                 income = var_income,
                 deals = var_deals,
                 tokens = var_tokens
-                WHERE consumer_id = var_seller_id;
+                WHERE consumer_id = var_seller_id and year_month = var_year_month;
+                
+                SELECT count(*) into var_month_count
+                FROM consumer_statistics
+                WHERE consumer_id = var_buyer_id and year_month = var_year_month;
+                
+                IF var_month_count = 0 THEN
+                    insert into consumer_statistics (consumer_id, year_month) values (var_buyer_id, var_year_month);
+                END IF;
                 
                 SELECT spending, deals, tokens INTO var_spending, var_deals, var_tokens
                 FROM consumer_statistics
-                WHERE consumer_id = var_buyer_id;
+                WHERE consumer_id = var_buyer_id and year_month = var_year_month;
                 
                 var_spending := var_spending + var_price;
                 var_deals := var_deals + 1;
@@ -1397,7 +1480,7 @@ class Connection:
                 spending = var_spending,
                 deals = var_deals,
                 tokens = var_tokens
-                WHERE consumer_id = var_buyer_id;
+                WHERE consumer_id = var_buyer_id  and year_month = var_year_month;
                 
                 SELECT total_spending, owners INTO var_total_spending, var_owners
                 FROM coin_statistics
@@ -1816,13 +1899,14 @@ class Connection:
             where banknote_id = :banknote_id
         ''', (banknote_id,)).fetchone()
 
-    def get_user_statistics_top(self, field, num):
+    def get_user_statistics_top(self, field, num, month_begin, month_end):
         return self.cursor.execute('''
-            select c.image, c.name, cs.income, cs.spending, cs.deals, cs.tokens
+            select c.name, sum(cs.income) income, sum(cs.spending) spending, sum(cs.deals) deals, sum(cs.tokens) tokens
             from consumer_statistics cs
             inner join consumer c on c.consumer_id = cs.consumer_id
-            order by 
-        ''' + field + ' desc').fetchmany(num)
+            where year_month >= :month_begin and year_month <= :month_end
+            group by c.name
+            order by ''' + field + ' desc', (month_begin, month_end)).fetchmany(num)
 
     def get_coin_statistics_top(self, field, num):
         return self.cursor.execute('''

@@ -38,14 +38,14 @@ class PageHome(Frame):
         self.profile_img = Label(account_frame, image=self.profile_image, bg='white', borderwidth=0)
         self.profile_img.place(x=5, y=5)
 
-        img2 = (Image.open(PATH_IMAGE_SETTINGS))
+        img2 = Image.open(PATH_IMAGE_SETTINGS)
         img2 = img2.resize((70, 70), Image.ANTIALIAS)
         self.settings_image = ImageTk.PhotoImage(img2)
         self.settings_img = Label(account_frame, image=self.settings_image, bg="#57a1f8", borderwidth=0)
         self.settings_img.place(x=1645, y=15)
         self.settings_img.bind("<Button-1>", self.edit_user)
 
-        img3 = (Image.open(PATH_IMAGE_BACK_BUTTON))
+        img3 = Image.open(PATH_IMAGE_BACK_BUTTON)
         img3 = img3.resize((100, 100), Image.ANTIALIAS)
         self.back_image = ImageTk.PhotoImage(img3)
         self.back_img = Label(account_frame, image=self.back_image, bg="#57a1f8", borderwidth=0)
@@ -241,9 +241,11 @@ class PageHome(Frame):
         rs = connection.get_consumer(self.username)
         if rs[3] is not None:
             img = image_from_blob(rs[3])
-            img = img.resize((90, 90), Image.ANTIALIAS)
-            self.profile_image = ImageTk.PhotoImage(img)
-            self.profile_img.configure(image=self.profile_image)
+        else:
+            img = Image.open(PATH_IMAGE_EMPTY_PROFILE)
+        img = img.resize((90, 90), Image.ANTIALIAS)
+        self.profile_image = ImageTk.PhotoImage(img)
+        self.profile_img.configure(image=self.profile_image)
 
     def load_collections(self):
         self.remove_elements()

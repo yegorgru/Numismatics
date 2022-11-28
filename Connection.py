@@ -338,6 +338,12 @@ class Connection:
                     var_coin_details_id
                 ) RETURNING coin_id INTO var_coin_id;
                 
+                INSERT INTO coin_statistics (
+                    coin_id
+                ) VALUES (
+                    var_coin_id
+                );
+                
                 SELECT
                     coll.collection_id, coll.consumer_id
                 INTO var_collection_id, var_consumer_id
@@ -448,6 +454,12 @@ class Connection:
                     var_token_details_id,
                     var_banknote_details_id
                 ) RETURNING banknote_id INTO var_banknote_id;
+                
+                INSERT INTO banknote_statistics (
+                    banknote_id
+                ) VALUES (
+                    var_banknote_id
+                );
 
                 SELECT
                     coll.collection_id, coll.consumer_id
@@ -775,6 +787,10 @@ class Connection:
                 SET coin_id = NULL
                 where coin_id = var_coin_id;
                 
+                DELETE FROM coin_statistics
+                WHERE
+                    coin_id = var_coin_id;
+                
                 DELETE FROM coin
                 WHERE
                     coin_id = var_coin_id;
@@ -831,6 +847,10 @@ class Connection:
                 UPDATE banknote_deal_archive
                 SET banknote_id = NULL
                 where banknote_id = var_banknote_id;
+                
+                DELETE FROM banknote_statistics
+                WHERE
+                    banknote_id = var_banknote_id;
 
                 DELETE FROM banknote
                 WHERE
@@ -957,6 +977,10 @@ class Connection:
                     WHERE
                         coin_id = record.coin_id;
             
+                    DELETE FROM coin_statistics
+                    WHERE
+                        coin_id = record.coin_id;
+            
                     DELETE FROM coin
                     WHERE
                         coin_id = record.coin_id;
@@ -990,6 +1014,10 @@ class Connection:
                     where banknote_id = record.banknote_id;
                     
                     DELETE FROM collection_banknote
+                    WHERE
+                        banknote_id = record.banknote_id;
+                        
+                    DELETE FROM banknote_statistics
                     WHERE
                         banknote_id = record.banknote_id;
             
@@ -1301,6 +1329,8 @@ class Connection:
                 var_spending        NUMBER;
                 var_deals           NUMBER;
                 var_tokens          NUMBER;
+                var_total_spending  NUMBER;
+                var_owners          NUMBER;
             BEGIN
                 SELECT
                     *
@@ -1368,6 +1398,18 @@ class Connection:
                 deals = var_deals,
                 tokens = var_tokens
                 WHERE consumer_id = var_buyer_id;
+                
+                SELECT total_spending, owners INTO var_total_spending, var_owners
+                FROM coin_statistics
+                WHERE coin_id = var_coin_id;
+                
+                var_total_spending := var_total_spending + var_price;
+                var_owners := var_owners + 1;
+                
+                UPDATE coin_statistics SET
+                total_spending = var_total_spending,
+                owners = var_owners
+                WHERE coin_id = var_coin_id;
                     
                 commit;
             END;
@@ -1384,10 +1426,12 @@ class Connection:
                 var_deal_type_id        NUMBER;
                 var_banknote_deal_id    NUMBER;
                 var_collection_id       NUMBER;
-                var_income          NUMBER;
-                var_spending        NUMBER;
-                var_deals           NUMBER;
-                var_tokens          NUMBER;
+                var_income              NUMBER;
+                var_spending            NUMBER;
+                var_deals               NUMBER;
+                var_tokens              NUMBER;
+                var_total_spending      NUMBER;
+                var_owners              NUMBER;
             BEGIN
                 SELECT
                     *
@@ -1457,6 +1501,18 @@ class Connection:
                 deals = var_deals,
                 tokens = var_tokens
                 WHERE consumer_id = var_buyer_id;
+                
+                SELECT total_spending, owners INTO var_total_spending, var_owners
+                FROM banknote_statistics
+                WHERE banknote_id = var_banknote_id;
+                
+                var_total_spending := var_total_spending + var_price;
+                var_owners := var_owners + 1;
+                
+                UPDATE banknote_statistics SET
+                total_spending = var_total_spending,
+                owners = var_owners
+                WHERE banknote_id = var_banknote_id;
 
                 commit;
             END;
@@ -1746,11 +1802,43 @@ class Connection:
             where c.name = :username
         ''', (username,)).fetchone()
 
+    def get_coin_statistics(self, coin_id):
+        return self.cursor.execute('''
+            select total_spending, owners
+            from coin_statistics
+            where coin_id = :coin_id
+        ''', (coin_id,)).fetchone()
+
+    def get_banknote_statistics(self, banknote_id):
+        return self.cursor.execute('''
+            select total_spending, owners
+            from banknote_statistics
+            where banknote_id = :banknote_id
+        ''', (banknote_id,)).fetchone()
+
     def get_user_statistics_top(self, field, num):
         return self.cursor.execute('''
             select c.image, c.name, cs.income, cs.spending, cs.deals, cs.tokens
             from consumer_statistics cs
             inner join consumer c on c.consumer_id = cs.consumer_id
+            order by 
+        ''' + field + ' desc').fetchmany(num)
+
+    def get_coin_statistics_top(self, field, num):
+        return self.cursor.execute('''
+            select td.image_obverse, c.coin_id, cs.total_spending, cs.owners
+            from coin_statistics cs
+            inner join coin c on c.coin_id = cs.coin_id
+            inner join token_details td on td.token_details_id = c.token_details_id
+            order by 
+        ''' + field + ' desc').fetchmany(num)
+
+    def get_banknote_statistics_top(self, field, num):
+        return self.cursor.execute('''
+            select td.image_obverse, b.banknote_id, bs.total_spending, bs.owners
+            from banknote_statistics bs
+            inner join banknote b on b.banknote_id = bs.banknote_id
+            inner join token_details td on td.token_details_id = b.token_details_id
             order by 
         ''' + field + ' desc').fetchmany(num)
 

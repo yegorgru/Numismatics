@@ -1746,5 +1746,13 @@ class Connection:
             where c.name = :username
         ''', (username,)).fetchone()
 
+    def get_user_statistics_top(self, field, num):
+        return self.cursor.execute('''
+            select c.image, c.name, cs.income, cs.spending, cs.deals, cs.tokens
+            from consumer_statistics cs
+            inner join consumer c on c.consumer_id = cs.consumer_id
+            order by 
+        ''' + field + ' desc').fetchmany(num)
+
 
 connection = Connection()

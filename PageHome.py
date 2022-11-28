@@ -15,6 +15,7 @@ from SearchToken import SearchToken
 from WindowCoinCreateEditSearch import WindowCoinCreateEditSearch
 from WindowBanknoteCreateEditSearch import WindowBanknoteCreateEditSearch
 from WindowConsumerEdit import WindowConsumerEdit
+from StatisticsConsumerRow import StatisticsConsumerRow
 
 
 class PageHome(Frame):
@@ -124,13 +125,9 @@ class PageHome(Frame):
         self.search_top_frame.grid(row=5, column=0, sticky='we')
 
         self.statistics_frame = Frame(self, width=1920, height=100, bg="white")
-        Label(
-            self.statistics_frame, text="Choose statistics type:", fg='black', bg='white', justify=LEFT,
-            font=('Microsoft YaHei UI Light', 11, 'bold')
-        ).grid(row=0, column=0, sticky="we", padx=(20, 20))
         self.statistics_var = StringVar()
         self.statistics_combobox = ttk.Combobox(self.statistics_frame, width=40, textvariable=self.statistics_var,
-                                                values=(STATISTICS_USER, ), state='readonly')
+                                                values=(STATISTICS_USER, STATISTICS_USER_TOP), state='readonly')
         self.statistics_combobox.current(0)
         self.statistics_combobox.grid(row=1, column=0, pady=(20, 0), sticky="we", padx=(20, 20))
         self.statistics_entry = EntryWithPlaceholder(self.statistics_frame, placeholder='Value')
@@ -142,9 +139,9 @@ class PageHome(Frame):
             font=('Microsoft YaHei UI Light', 11, 'bold'), command=lambda: self.show_statistics()
         )
         self.show_statistics_btn.grid(row=4, column=0, sticky='we', padx=(20, 20))
-        self.statistics_frame.grid(row=7, column=0, sticky='we')
+        self.statistics_frame.grid(row=7, column=0, sticky='news')
 
-        self.user_statistics_frame = Frame(self.statistics_frame, width=1920, height=200, bg="white")
+        self.user_statistics_frame = Frame(self.statistics_frame, bg="white")
         Label(
             self.user_statistics_frame, text="Income", fg='black', bg='white', justify=CENTER,
             font=('Microsoft YaHei UI Light', 11, 'bold')
@@ -193,6 +190,8 @@ class PageHome(Frame):
         self.user_statistics_collections.grid(row=1, column=4, sticky="we", padx=(20, 20), pady=(20, 20))
         self.user_statistics_frame.grid(row=5, column=0, sticky='we')
 
+        self.user_statistics_top_frame_list = None
+
     def load(self):
         self.controller.geometry("1920x1080+0+0")
         self.controller.state('zoomed')
@@ -236,6 +235,7 @@ class PageHome(Frame):
         self.show_statistics()
 
     def show_statistics(self):
+        self.remove_elements_statistics()
         stat = self.statistics_var.get()
         is_admin = connection.is_admin(self.username)
         if not is_admin:
@@ -244,6 +244,8 @@ class PageHome(Frame):
         if stat == STATISTICS_USER:
             self.user_statistics_frame.grid()
             self.load_statistics_user()
+        elif stat == STATISTICS_USER_TOP:
+            self.load_statistics_user_top()
 
     def load_statistics_user(self):
         user_name = self.statistics_entry.get_text()
@@ -253,6 +255,20 @@ class PageHome(Frame):
         self.user_statistics_deals.configure(text=rs[2])
         self.user_statistics_tokens.configure(text=rs[3])
         self.user_statistics_collections.configure(text=rs[4])
+
+    def load_statistics_user_top(self):
+        inp = self.statistics_entry.get_text().split(',')
+        rs = connection.get_user_statistics_top(inp[0], int(inp[1]))
+        users = list()
+        heading = (None, "Name", "Income", "Spending", "Deals", "Tokens")
+        users.append(StatisticsConsumerRow(heading, is_heading=True))
+        for user in rs:
+            users.append(StatisticsConsumerRow(user))
+
+        self.user_statistics_top_frame_list = ListManager(
+            self, row_width=100, width=1920, height=700, objects=users
+        )
+        self.user_statistics_top_frame_list.grid(row=8, column=0, sticky='news')
 
     def load_deals(self, *args):
         self.remove_elements()
@@ -303,6 +319,13 @@ class PageHome(Frame):
         if self.results is not None:
             self.results.grid_remove()
         self.statistics_frame.grid_remove()
+        if self.user_statistics_top_frame_list is not None:
+            self.user_statistics_top_frame_list.grid_remove()
+
+    def remove_elements_statistics(self):
+        self.user_statistics_frame.grid_remove()
+        if self.user_statistics_top_frame_list is not None:
+            self.user_statistics_top_frame_list.grid_remove()
 
     def search_by_name(self):
         self.show_search_tab()

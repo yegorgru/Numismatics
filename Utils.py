@@ -47,3 +47,5 @@ def get_general_image_bytes():
     file = io.BytesIO(file.read())
     file.seek(0, os.SEEK_END)
     return file.getvalue()
+
+

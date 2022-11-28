@@ -25,6 +25,13 @@ def tuple_list_to_tuple(tuple_list):
     return tup
 
 
+def list_tuple_to_list(list_tuple):
+    answer = list()
+    for i in list_tuple:
+        answer.append(i[0])
+    return answer
+
+
 def tuple_with_delimiter(tuple_list, delimiter):
     tup = tuple()
     for i in tuple_list:

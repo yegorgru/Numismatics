@@ -19,6 +19,8 @@ from StatisticsConsumerRow import StatisticsConsumerRow
 from StatisticsTokenRow import StatisticsTokenRow
 
 from tkinter.messagebox import showwarning
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_tkagg import (FigureCanvasTkAgg, NavigationToolbar2Tk)
 
 
 class PageHome(Frame):
@@ -219,9 +221,12 @@ class PageHome(Frame):
             font=('Microsoft YaHei UI Light', 11, 'bold')
         )
         self.token_statistics_owners.grid(row=1, column=1, sticky="we", padx=(20, 20), pady=(20, 20))
+
         self.token_statistics_frame.grid(row=6, column=0, sticky='we')
 
         self.tokens_statistics_top_frame_list = None
+
+        self.canvas = None
 
     def load(self):
         self.controller.geometry("1920x1080+0+0")
@@ -334,6 +339,25 @@ class PageHome(Frame):
         self.token_statistics_total_spending.configure(text=rs[0])
         self.token_statistics_owners.configure(text=rs[1])
 
+        x = ['1', '2', '3', '4', '5']
+        if is_coin:
+            y = list_tuple_to_list(connection.get_coin_previous_prices(token_id, 5))
+        else:
+            y = list_tuple_to_list(connection.get_banknote_previous_prices(token_id, 5))
+
+        maximum = float(max(y))
+        y = [int(item / maximum * 100.0) for item in y]
+        y.reverse()
+        while len(y) < len(x):
+            y.insert(0, 0)
+        fig = plt.figure(figsize=(5, 5))
+        plt.bar(x=x, height=y)
+
+        # specify the window as master
+        self.canvas = FigureCanvasTkAgg(fig, master=self)
+        self.canvas.draw()
+        self.canvas.get_tk_widget().grid(row=10, column=0)
+
     def load_statistics_token_top(self, is_coin):
         inp = self.statistics_entry.get_text().split(',')
         if is_coin:
@@ -404,6 +428,8 @@ class PageHome(Frame):
             self.user_statistics_top_frame_list.grid_remove()
         if self.tokens_statistics_top_frame_list is not None:
             self.tokens_statistics_top_frame_list.grid_remove()
+        if self.canvas is not None:
+            self.canvas.get_tk_widget().grid_remove()
 
     def remove_elements_statistics(self):
         self.user_statistics_frame.grid_remove()
@@ -412,6 +438,8 @@ class PageHome(Frame):
         self.token_statistics_frame.grid_remove()
         if self.tokens_statistics_top_frame_list is not None:
             self.tokens_statistics_top_frame_list.grid_remove()
+        if self.canvas is not None:
+            self.canvas.get_tk_widget().grid_remove()
 
     def search_by_name(self):
         self.show_search_tab()

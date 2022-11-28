@@ -1926,5 +1926,19 @@ class Connection:
             order by 
         ''' + field + ' desc').fetchmany(num)
 
+    def get_coin_previous_prices(self, coin_id, num):
+        return self.cursor.execute('''
+            select price from coin_deal_archive
+            where coin_id = :coin_id
+            order by date_end desc
+        ''', (coin_id,)).fetchmany(num)
+
+    def get_banknote_previous_prices(self, banknote_id, num):
+        return self.cursor.execute('''
+            select price from banknote_deal_archive
+            where banknote_id = :banknote_id
+            order by date_end desc
+        ''', (banknote_id,)).fetchmany(num)
+
 
 connection = Connection()

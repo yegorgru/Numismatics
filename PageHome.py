@@ -134,7 +134,7 @@ class PageHome(Frame):
         self.statistics_combobox = ttk.Combobox(
             self.statistics_frame, width=40, textvariable=self.statistics_var,
             values=(STATISTICS_USER, STATISTICS_USER_TOP, STATISTICS_COIN, STATISTICS_COIN_TOP,
-                    STATISTICS_BANKNOTE, STATISTICS_BANKNOTE_TOP),
+                    STATISTICS_BANKNOTE, STATISTICS_BANKNOTE_TOP, STATISTICS_TOTAL),
             state='readonly'
         )
         self.statistics_combobox.current(0)
@@ -228,6 +228,55 @@ class PageHome(Frame):
 
         self.canvas = None
 
+        self.total_statistics_frame = Frame(self.statistics_frame, bg="white")
+        Label(
+            self.total_statistics_frame, text="Income", fg='black', bg='white', justify=CENTER,
+            font=('Microsoft YaHei UI Light', 11, 'bold')
+        ).grid(row=0, column=0, sticky="we", padx=(20, 20), pady=(20, 20))
+        Label(
+            self.total_statistics_frame, text="Spending", fg='black', bg='white', justify=CENTER,
+            font=('Microsoft YaHei UI Light', 11, 'bold')
+        ).grid(row=0, column=1, sticky="we", padx=(20, 20), pady=(20, 20))
+        Label(
+            self.total_statistics_frame, text="Deals", fg='black', bg='white', justify=CENTER,
+            font=('Microsoft YaHei UI Light', 11, 'bold')
+        ).grid(row=0, column=2, sticky="we", padx=(20, 20), pady=(20, 20))
+        Label(
+            self.total_statistics_frame, text="Tokens", fg='black', bg='white', justify=CENTER,
+            font=('Microsoft YaHei UI Light', 11, 'bold')
+        ).grid(row=0, column=3, sticky="we", padx=(20, 20), pady=(20, 20))
+        Label(
+            self.total_statistics_frame, text="Collections", fg='black', bg='white', justify=CENTER,
+            font=('Microsoft YaHei UI Light', 11, 'bold')
+        ).grid(row=0, column=4, sticky="we", padx=(20, 20), pady=(20, 20))
+
+        self.total_statistics_income = Label(
+            self.total_statistics_frame, text="", fg='black', bg='white', justify=CENTER,
+            font=('Microsoft YaHei UI Light', 11, 'bold')
+        )
+        self.total_statistics_income.grid(row=1, column=0, sticky="we", padx=(20, 20), pady=(20, 20))
+        self.total_statistics_spending = Label(
+            self.total_statistics_frame, text="", fg='black', bg='white', justify=CENTER,
+            font=('Microsoft YaHei UI Light', 11, 'bold')
+        )
+        self.total_statistics_spending.grid(row=1, column=1, sticky="we", padx=(20, 20), pady=(20, 20))
+        self.total_statistics_deals = Label(
+            self.total_statistics_frame, text="", fg='black', bg='white', justify=CENTER,
+            font=('Microsoft YaHei UI Light', 11, 'bold')
+        )
+        self.total_statistics_deals.grid(row=1, column=2, sticky="we", padx=(20, 20), pady=(20, 20))
+        self.total_statistics_tokens = Label(
+            self.total_statistics_frame, text="", fg='black', bg='white', justify=CENTER,
+            font=('Microsoft YaHei UI Light', 11, 'bold')
+        )
+        self.total_statistics_tokens.grid(row=1, column=3, sticky="we", padx=(20, 20), pady=(20, 20))
+        self.total_statistics_collections = Label(
+            self.total_statistics_frame, text="", fg='black', bg='white', justify=CENTER,
+            font=('Microsoft YaHei UI Light', 11, 'bold')
+        )
+        self.total_statistics_collections.grid(row=1, column=4, sticky="we", padx=(20, 20), pady=(20, 20))
+        self.total_statistics_frame.grid(row=7, column=0, sticky='we')
+
     def load(self):
         self.controller.geometry("1920x1080+0+0")
         self.controller.state('zoomed')
@@ -296,6 +345,9 @@ class PageHome(Frame):
             self.load_statistics_token(is_coin=False)
         elif stat == STATISTICS_BANKNOTE_TOP:
             self.load_statistics_token_top(is_coin=False)
+        elif stat == STATISTICS_TOTAL:
+            self.total_statistics_frame.grid()
+            self.load_statistics_total()
 
     def load_statistics_user(self):
         user_name = self.statistics_entry.get_text()
@@ -435,6 +487,7 @@ class PageHome(Frame):
 
     def remove_elements_statistics(self):
         self.user_statistics_frame.grid_remove()
+        self.total_statistics_frame.grid_remove()
         if self.user_statistics_top_frame_list is not None:
             self.user_statistics_top_frame_list.grid_remove()
         self.token_statistics_frame.grid_remove()
@@ -529,4 +582,12 @@ class PageHome(Frame):
         self.controller.state('normal')
         self.controller.show_frame("PageLogin")
 
+    def load_statistics_total(self):
+        inp = self.statistics_entry.get_text().split(',')
+        rs = connection.get_total_statistics(int(inp[0]), int(inp[1]))
+        self.total_statistics_income.configure(text=rs[0])
+        self.total_statistics_spending.configure(text=rs[1])
+        self.total_statistics_deals.configure(text=rs[2])
+        self.total_statistics_tokens.configure(text=rs[3])
+        self.total_statistics_collections.configure(text=rs[4])
 

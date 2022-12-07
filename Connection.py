@@ -1515,6 +1515,9 @@ class Connection:
                 var_tokens              NUMBER;
                 var_total_spending      NUMBER;
                 var_owners              NUMBER;
+                var_date                DATE := SYSDATE;
+                var_month_count         NUMBER;
+                var_year_month          NUMBER := to_number(to_char(var_date, 'yyyymm'));
             BEGIN
                 SELECT
                     *
@@ -1557,9 +1560,17 @@ class Connection:
                 SET collection_id = var_collection_id
                 WHERE banknote_id = var_banknote_id;
                 
-                                SELECT income, deals, tokens INTO var_income, var_deals, var_tokens
+                SELECT count(*) into var_month_count
                 FROM consumer_statistics
-                WHERE consumer_id = var_seller_id;
+                WHERE consumer_id = var_seller_id and year_month = var_year_month;
+                
+                IF var_month_count = 0 THEN
+                    insert into consumer_statistics (consumer_id, year_month) values (var_buyer_id, var_year_month);
+                END IF;
+                
+                SELECT income, deals, tokens INTO var_income, var_deals, var_tokens
+                FROM consumer_statistics
+                WHERE consumer_id = var_seller_id and year_month = var_year_month;
                 
                 var_income := var_income + var_price;
                 var_deals := var_deals + 1;
@@ -1569,11 +1580,19 @@ class Connection:
                 income = var_income,
                 deals = var_deals,
                 tokens = var_tokens
-                WHERE consumer_id = var_seller_id;
+                WHERE consumer_id = var_seller_id and year_month = var_year_month;
+                
+                SELECT count(*) into var_month_count
+                FROM consumer_statistics
+                WHERE consumer_id = var_buyer_id and year_month = var_year_month;
+                
+                IF var_month_count = 0 THEN
+                    insert into consumer_statistics (consumer_id, year_month) values (var_buyer_id, var_year_month);
+                END IF;
                 
                 SELECT spending, deals, tokens INTO var_spending, var_deals, var_tokens
                 FROM consumer_statistics
-                WHERE consumer_id = var_buyer_id;
+                WHERE consumer_id = var_buyer_id and year_month = var_year_month;
                 
                 var_spending := var_spending + var_price;
                 var_deals := var_deals + 1;
@@ -1583,7 +1602,7 @@ class Connection:
                 spending = var_spending,
                 deals = var_deals,
                 tokens = var_tokens
-                WHERE consumer_id = var_buyer_id;
+                WHERE consumer_id = var_buyer_id and year_month = var_year_month;
                 
                 SELECT total_spending, owners INTO var_total_spending, var_owners
                 FROM banknote_statistics
@@ -1939,6 +1958,14 @@ class Connection:
             where banknote_id = :banknote_id
             order by date_end desc
         ''', (banknote_id,)).fetchmany(num)
+
+    def get_total_statistics(self, month_begin, month_end):
+        return self.cursor.execute('''
+            select sum(cs.income) income, sum(cs.spending) spending, sum(cs.deals) deals, sum(cs.tokens) tokens, 
+                sum(cs.collections) collections
+            from consumer_statistics cs
+            where year_month >= :month_begin and year_month <= :month_end
+            ''', (month_begin, month_end)).fetchone()
 
 
 connection = Connection()
